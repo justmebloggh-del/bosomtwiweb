@@ -24,40 +24,41 @@ const sanity = createClient({
 });
 
 // -----------------------------
-async function startServer() {
+// USERS (TEMP IN-MEMORY)
+// -----------------------------
+let users: any[] = [
+  {
+    id: '1',
+    name: 'Admin User',
+    email: 'admin@bosomtwi.web',
+    password: '',
+    role: 'admin'
+  },
+  {
+    id: '2',
+    name: 'Kwame Asante',
+    email: 'kwame@bosomtwi.web',
+    role: 'editor'
+  },
+  {
+    id: '3',
+    name: 'Ama Serwaa',
+    email: 'ama@bosomtwi.web',
+    role: 'journalist'
+  }
+];
+
+// Initialize admin password
+bcrypt.hash('admin123', 10).then(hash => {
+  users[0].password = hash;
+});
+
+export async function createApp() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
   const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
   app.use(cors());
   app.use(express.json());
-
-  // -----------------------------
-  // USERS (TEMP IN-MEMORY)
-  // -----------------------------
-  let users: any[] = [
-    {
-      id: '1',
-      name: 'Admin User',
-      email: 'admin@bosomtwi.web',
-      password: '',
-      role: 'admin'
-    },
-    {
-      id: '2',
-      name: 'Kwame Asante',
-      email: 'kwame@bosomtwi.web',
-      role: 'editor'
-    },
-    {
-      id: '3',
-      name: 'Ama Serwaa',
-      email: 'ama@bosomtwi.web',
-      role: 'journalist'
-    }
-  ];
-
-  users[0].password = await bcrypt.hash('admin123', 10);
 
   // -----------------------------
   // AUTH
@@ -176,8 +177,15 @@ async function startServer() {
     });
   });
 
+  return app;
+}
+
+async function startServer() {
+  const app = await createApp();
+  const PORT = Number(process.env.PORT) || 3000;
+
   // -----------------------------
-  // VITE DEV SERVER
+  // VITE DEV SERVER (Only for Local Dev)
   // -----------------------------
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -193,7 +201,6 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-
     app.use(express.static(distPath));
     app.get('*', (_, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
@@ -208,4 +215,7 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only run server directly if not imported (e.g. by Vercel)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  startServer();
+}
