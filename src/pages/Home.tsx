@@ -70,6 +70,21 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
                     allowFullScreen
                   />
                 </div>
+
+                {/* Custom "Visit Lake Bosomtwi" Ad */}
+                <AdBanner 
+                  size="leaderboard" 
+                  className="mb-8"
+                  customAd={{
+                    brand: 'Visit Lake Bosomtwi',
+                    tagline: 'Ghana\'s Only Natural Lake Awaits You.',
+                    cta: 'Explore the Lake',
+                    bg: 'from-cyan-50 to-blue-100',
+                    accent: '#0891b2',
+                    label: 'Tourism',
+                    logo: '🌊'
+                  }}
+                />
                 <p className="text-news-text/60 text-lg font-sans leading-relaxed">
                   Stream live events, cultural festivals, and breaking news reports directly from Kumasi. Supporting local stories through professional digital journalism.
                 </p>

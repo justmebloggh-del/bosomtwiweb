@@ -5,6 +5,15 @@ type AdSize = 'leaderboard' | 'rectangle' | 'square' | 'wide';
 interface AdBannerProps {
   size?: AdSize;
   className?: string;
+  customAd?: {
+    brand: string;
+    tagline: string;
+    cta: string;
+    bg: string;
+    accent: string;
+    label: string;
+    logo: string;
+  };
 }
 
 const ADS = [
@@ -68,10 +77,10 @@ function getAdIndex(seed: number) {
   return seed % ADS.length;
 }
 
-export default function AdBanner({ size = 'rectangle', className = '' }: AdBannerProps) {
+export default function AdBanner({ size = 'rectangle', className = '', customAd }: AdBannerProps) {
   // Use time-based rotation so different slots show different ads
   const slot = Math.floor(Date.now() / 60000) + (size === 'leaderboard' ? 0 : size === 'wide' ? 2 : size === 'square' ? 4 : 1);
-  const ad = ADS[getAdIndex(slot)];
+  const ad = customAd || ADS[getAdIndex(slot)];
 
   if (size === 'leaderboard') {
     return (

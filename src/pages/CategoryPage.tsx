@@ -140,7 +140,7 @@ export default function CategoryPage({ category, onArticleClick, articles, onHom
               transition={{ duration: 0.6, delay: 0.55 }}
               className="mt-5 text-white/50 text-sm font-sans uppercase tracking-widest font-bold italic"
             >
-              Your #1 Local News Channel
+              Your Most Lake News Channel
             </motion.p>
           </div>
 
