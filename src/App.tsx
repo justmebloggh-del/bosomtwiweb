@@ -195,7 +195,7 @@ export default function App() {
           <iframe
             width="100%"
             height="100%"
-            src="https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&mute=1&controls=1&loop=1&playlist=jfKfPfyJRdk&modestbranding=1&rel=0"
+            src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&controls=1&loop=1&playlist=STQpAHL5G5g&modestbranding=1&rel=0"
             title="Bosomtwi Web Live"
             frameBorder="0"
             referrerPolicy="strict-origin-when-cross-origin"

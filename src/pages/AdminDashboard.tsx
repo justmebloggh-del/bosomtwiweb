@@ -839,7 +839,12 @@ function TabSettings() {
              External Systems Integration
           </h3>
           <div className="space-y-6">
-             <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-slate-200 group hover:border-ashanti-gold transition-all">
+             <a 
+                href="http://localhost:3333" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-slate-200 group hover:border-ashanti-gold transition-all"
+             >
                 <div className="flex items-center space-x-6">
                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm font-black text-red-500 border border-slate-200 group-hover:scale-110 transition-transform">S</div>
                    <div>
@@ -847,8 +852,10 @@ function TabSettings() {
                       <p className="text-xs text-news-text/40 font-bold">Content Pipeline</p>
                    </div>
                 </div>
-                <button className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-news-text/20 hover:text-ashanti-gold hover:border-ashanti-gold transition-all"><ExternalLink size={18} /></button>
-             </div>
+                <div className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-news-text/20 group-hover:text-ashanti-gold group-hover:border-ashanti-gold transition-all">
+                  <ExternalLink size={18} />
+                </div>
+             </a>
              <div className={`flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-slate-200 group hover:border-ashanti-gold transition-all ${!SUPABASE_CONFIGURED && 'opacity-50 grayscale'}`}>
                 <div className="flex items-center space-x-6">
                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm font-black text-blue-500 border border-slate-200 group-hover:scale-110 transition-transform">S</div>
