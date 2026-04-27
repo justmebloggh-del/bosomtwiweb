@@ -5,7 +5,6 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { createClient } from '@sanity/client';
 
 dotenv.config();
 
@@ -20,39 +19,44 @@ app.use(cors());
 app.use(express.json());
 
 // -----------------------------
-// SANITY CLIENT
-// -----------------------------
-const SANITY_PROJECT_ID = process.env.VITE_SANITY_PROJECT_ID || 'hdnz0m66';
-
-const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset: process.env.VITE_SANITY_DATASET || 'bosomtwiweb',
-  apiVersion: '2024-01-01',
-  useCdn: true,
-});
-
-// -----------------------------
-// USERS (TEMP IN-MEMORY)
+// DATA STORE (TEMP IN-MEMORY)
 // -----------------------------
 let users: any[] = [
+  { id: '1', name: 'Admin User', email: 'admin@bosomtwi.web', password: '', role: 'admin' },
+  { id: '2', name: 'Kwame Asante', email: 'kwame@bosomtwi.web', role: 'editor' },
+  { id: '3', name: 'Ama Serwaa', email: 'ama@bosomtwi.web', role: 'journalist' }
+];
+
+let articles: any[] = [
   {
     id: '1',
-    name: 'Admin User',
-    email: 'admin@bosomtwi.web',
-    password: '',
-    role: 'admin'
+    title: 'Ashanti Gold Revenues Reach Record Highs in Q1 2024',
+    slug: 'ashanti-gold-revenues-2024',
+    category: 'Business',
+    author: 'Kwame Asante',
+    publishedAt: new Date().toISOString(),
+    excerpt: 'The mining sector in the Ashanti Region has reported a significant surge in production, driving national economic growth to new levels.',
+    image: 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800'
   },
   {
     id: '2',
-    name: 'Kwame Asante',
-    email: 'kwame@bosomtwi.web',
-    role: 'editor'
+    title: 'Manhyia Palace Announces Major Cultural Restoration Project',
+    slug: 'manhyia-restoration-project',
+    category: 'Manhyia',
+    author: 'Admin User',
+    publishedAt: new Date().toISOString(),
+    excerpt: 'His Majesty Otumfuo Osei Tutu II has commissioned a comprehensive digital archiving project to preserve the heritage of the Golden Stool.',
+    image: 'https://images.unsplash.com/photo-1523438097201-512ae7d59c44?auto=format&fit=crop&q=80&w=800'
   },
   {
     id: '3',
-    name: 'Ama Serwaa',
-    email: 'ama@bosomtwi.web',
-    role: 'journalist'
+    title: 'New Tech Hub in Kumasi to Train 5,000 Software Engineers',
+    slug: 'kumasi-tech-hub-launch',
+    category: 'Tech',
+    author: 'Ama Serwaa',
+    publishedAt: new Date().toISOString(),
+    excerpt: 'A state-of-the-art innovation center has opened its doors in the heart of Kumasi, aiming to transform the Garden City into a Silicon Valley.',
+    image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=800'
   }
 ];
 
@@ -66,53 +70,20 @@ bcrypt.hash('admin123', 10).then(hash => {
 // -----------------------------
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-
   const user = users.find(u => u.email === email);
-
-  if (!user || !user.password) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-
+  if (!user || !user.password) return res.status(401).json({ message: 'Invalid credentials' });
   const valid = await bcrypt.compare(password, user.password);
-
-  if (!valid) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    }
-  });
+  if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
+  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 });
 
 // -----------------------------
 // USERS
 // -----------------------------
-app.get('/api/users', (_, res) => {
-  res.json(users.map(u => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    role: u.role
-  })));
-});
-
+app.get('/api/users', (_, res) => res.json(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role }))));
 app.post('/api/users', (req, res) => {
-  const newUser = {
-    id: String(users.length + 1),
-    ...req.body
-  };
+  const newUser = { id: String(users.length + 1), ...req.body };
   users.push(newUser);
   res.json(newUser);
 });
@@ -120,50 +91,27 @@ app.post('/api/users', (req, res) => {
 // -----------------------------
 // ARTICLES
 // -----------------------------
-app.get('/api/articles', async (_, res) => {
-  try {
-    const query = `
-      *[_type == "post"] | order(publishedAt desc) {
-        "id": _id,
-        title,
-        "slug": slug.current,
-        "category": categories[0]->title,
-        "author": author->name,
-        publishedAt,
-        excerpt,
-        "image": mainImage.asset->url
-      }
-    `;
+app.get('/api/articles', (_, res) => res.json(articles));
 
-    const articles = await sanity.fetch(query);
-    res.json(articles);
-  } catch (error) {
-    console.error('Sanity fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch articles' });
-  }
-});
-
-app.post('/api/articles', async (req, res) => {
-  try {
-    const doc = {
-      _type: 'post',
-      title: req.body.title,
-      slug: { _type: 'slug', current: req.body.slug },
-      category: req.body.category,
-      author: req.body.author,
-      publishedAt: new Date().toISOString(),
-      excerpt: req.body.excerpt
-    };
-    const result = await sanity.create(doc);
-    res.json(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to create article' });
-  }
+app.post('/api/articles', (req, res) => {
+  const newArticle = {
+    id: String(articles.length + 1),
+    title: req.body.title,
+    slug: req.body.slug || req.body.title.toLowerCase().replace(/ /g, '-'),
+    category: req.body.category,
+    author: req.body.author,
+    publishedAt: new Date().toISOString(),
+    excerpt: req.body.excerpt,
+    image: req.body.image || 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800'
+  };
+  articles.unshift(newArticle); // Put new articles at the top
+  res.json(newArticle);
 });
 
 app.delete('/api/articles/:id', (req, res) => {
-  res.status(501).json({ message: 'Delete should be handled in Sanity Studio' });
+  const { id } = req.params;
+  articles = articles.filter(a => a.id !== id);
+  res.json({ success: true });
 });
 
 // -----------------------------
@@ -180,14 +128,9 @@ async function init() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-  });
+  app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on http://localhost:${PORT}`));
 }
 
 init();
