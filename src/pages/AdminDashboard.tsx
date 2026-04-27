@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { Article, User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { sanity, SANITY_CONFIGURED } from '../lib/sanity';
 import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase';
 import { GoogleGenAI } from "@google/genai";
 import { 
@@ -102,15 +101,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const loadArticles = async () => {
     setLoading(true);
     try {
-      if (SANITY_CONFIGURED) {
-        const query = '*[_type == "post"] | order(publishedAt desc) { "id": _id, title, "slug": slug.current, "category": categories[0]->title, "author": author->name, publishedAt, excerpt, "image": mainImage.asset->url }';
-        const data = await sanity.fetch(query);
-        setArticles(data);
-      } else {
-        const res = await fetch('/api/articles');
-        const data = await res.json();
-        setArticles(data);
-      }
+      const res = await fetch('/api/articles');
+      const data = await res.json();
+      setArticles(data);
     } catch (error) {
       console.error('Failed to load articles:', error);
     } finally {
@@ -128,12 +121,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const uploadAsset = async (file: File) => {
     setUploading(true);
     try {
-      if (SANITY_CONFIGURED) {
-        const asset = await sanity.assets.upload('image', file, {
-          filename: file.name
-        });
-        return asset.url;
-      } else if (SUPABASE_CONFIGURED) {
+      if (SUPABASE_CONFIGURED) {
         const fileName = `article_${Date.now()}_${file.name}`;
         const { data, error } = await supabase.storage
           .from('article-images')
@@ -176,32 +164,18 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         }
       }
 
-      if (SANITY_CONFIGURED) {
-        const doc = {
-          _type: 'post',
-          title: newArticle.title,
-          excerpt: newArticle.excerpt,
+      const res = await fetch('/api/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newArticle,
+          image: imageUrl,
           publishedAt: new Date().toISOString(),
-          // In a real schema, mainImage would be an object with an asset reference
-          // For simplicity in this demo, we might store the URL if the schema supports it
-          // but usually it's { _type: 'image', asset: { _type: 'reference', _ref: assetId } }
-        };
-        await sanity.create(doc);
-        setStatusMessage({ text: 'Article broadcasted worldwide via Sanity Cloud!', type: 'success' });
-      } else {
-        const res = await fetch('/api/articles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...newArticle,
-            image: imageUrl,
-            publishedAt: new Date().toISOString(),
-            status: 'published'
-          })
-        });
-        if (res.ok) {
-          setStatusMessage({ text: 'Success! Your story is now live for the world to see.', type: 'success' });
-        }
+          status: 'published'
+        })
+      });
+      if (res.ok) {
+        setStatusMessage({ text: 'Success! Your story is now live for the world to see.', type: 'success' });
       }
       setTimeout(() => {
         loadArticles();
@@ -225,11 +199,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const deleteArticle = async (id: string) => {
     if (!confirm('Are you sure you want to delete this article?')) return;
     try {
-      if (SANITY_CONFIGURED) {
-        await sanity.delete(id);
-      } else {
-        await fetch(`/api/articles/${id}`, { method: 'DELETE' });
-      }
+      await fetch(`/api/articles/${id}`, { method: 'DELETE' });
       setArticles(articles.filter(a => a.id !== id));
       setStatusMessage({ text: 'Article removed from archive', type: 'success' });
     } catch (error) {

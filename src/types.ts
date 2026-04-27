@@ -7,15 +7,13 @@ export interface Article {
   publishedAt: string;
   excerpt: string;
   image: string;
+  content?: string;
   videoUrl?: string;
-  content?: any; // Sanity Portable Text
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'editor' | 'journalist' | 'user';
+  role: 'admin' | 'editor' | 'journalist';
 }
-
-export type Category = 'Politics' | 'Business' | 'Sports' | 'Technology' | 'Entertainment' | 'Health' | 'Opinion' | 'Local' | 'International';

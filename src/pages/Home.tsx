@@ -45,59 +45,43 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
       </div>
 
       <main className="flex flex-col lg:flex-row border-b border-brand-secondary/20">
-        {/* Hero Story */}
+        {/* Hero Section with Video */}
         <div className="lg:w-2/3 border-r border-brand-secondary/20 flex flex-col">
-          {mainArticle && (
-            <div onClick={() => onArticleClick(mainArticle)}>
-              <ArticleCard article={mainArticle} variant="large" />
+          <div className="relative aspect-video bg-black overflow-hidden group">
+            <iframe 
+              width="100%" 
+              height="100%" 
+              src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&loop=1&playlist=STQpAHL5G5g&controls=0&modestbranding=1&rel=0" 
+              title="Bosomtwi Web Live Hero" 
+              frameBorder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowFullScreen
+              className="scale-105 group-hover:scale-100 transition-transform duration-[2000ms]"
+            />
+            <div className="absolute top-8 left-8 z-10">
+              <span className="bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] flex items-center shadow-lg">
+                <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>
+                Live Transmission
+              </span>
             </div>
-          )}
-
-          {/* Moved Video / Live Section */}
-          <div className="p-8 lg:p-16 bg-brand-surface border-t border-brand-secondary/20">
-            <div className="flex flex-col space-y-10">
-              <div>
-                <span className="text-ashanti-gold text-[11px] font-bold uppercase tracking-[0.3em] mb-4 block">Live Transmission</span>
-                <h2 className="font-heading text-3xl md:text-4xl font-bold text-news-text mb-6 leading-tight">The Ashanti Digital News Network.</h2>
-                <div className="relative aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-brand-secondary/20 mb-8">
-                  <iframe 
-                    width="100%" 
-                    height="100%" 
-                    src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&loop=1&playlist=STQpAHL5G5g" 
-                    title="Bosomtwi Web Live" 
-                    frameBorder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                    allowFullScreen
-                  />
-                </div>
-
-                {/* Custom "Visit Lake Bosomtwi" Ad */}
-                <AdBanner 
-                  size="leaderboard" 
-                  className="mb-8"
-                  customAd={{
-                    brand: 'Visit Lake Bosomtwi',
-                    tagline: 'Ghana\'s Only Natural Lake Awaits You.',
-                    cta: 'Explore the Lake',
-                    bg: 'from-cyan-50 to-blue-100',
-                    accent: '#0891b2',
-                    label: 'Tourism',
-                    logo: '🌊'
-                  }}
-                />
-                <p className="text-news-text/60 text-lg font-sans leading-relaxed">
-                  Stream live events, cultural festivals, and breaking news reports directly from Kumasi. Supporting local stories through professional digital journalism.
-                </p>
-              </div>
-              <div className="flex space-x-4">
-                <div className="px-6 py-3 bg-brand-secondary/20 border border-brand-secondary/30 text-[11px] font-bold uppercase tracking-widest text-news-text/40 shadow-sm">
-                  24/7 Coverage
-                </div>
-                <div className="px-6 py-3 bg-brand-secondary/20 border border-brand-secondary/30 text-[11px] font-bold uppercase tracking-widest text-news-text/40 shadow-sm">
-                  FHD Stream
-                </div>
-              </div>
+            <div className="absolute bottom-0 inset-x-0 p-12 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none text-white">
+              <span className="text-ashanti-gold text-[12px] font-black uppercase tracking-[0.4em] mb-4 block">Official Feed</span>
+              <h1 className="font-heading text-4xl md:text-5xl font-bold mb-6 leading-tight max-w-2xl">
+                The Ashanti Digital News Network.
+              </h1>
+              <p className="text-white/60 text-lg font-sans max-w-xl line-clamp-2">
+                Real-time coverage of cultural heritage, economic progress, and local narratives from the heart of the Ashanti Region.
+              </p>
             </div>
+          </div>
+
+          {/* Featured Articles Grid Below Hero */}
+          <div className="p-8 lg:p-12 grid grid-cols-1 md:grid-cols-2 gap-12 border-t border-brand-secondary/20">
+            {articles.slice(0, 2).map(article => (
+              <div key={article.id} onClick={() => onArticleClick(article)} className="cursor-pointer">
+                <ArticleCard article={article} />
+              </div>
+            ))}
           </div>
         </div>
 

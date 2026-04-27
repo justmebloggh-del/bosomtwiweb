@@ -208,7 +208,6 @@ export default function App() {
 
       <Footer />
 
-      {/* Login Modal */}
       <AnimatePresence>
         {showLoginModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -289,13 +288,6 @@ export default function App() {
                   <p className="text-center text-[10px] uppercase tracking-widest font-bold text-news-text/30 pt-4">
                     Security policy: Access is restricted to authorized personnel.
                   </p>
-
-                  {/* <div className="mt-8 pt-8 border-t border-brand-secondary/10 text-center">
-                       <p className="text-xs font-medium text-news-text/50">
-                         Demo Credentials: <br/>
-                         <span className="font-bold text-news-text">admin@bosomtwi.web / admin123</span>
-                       </p>
-                    </div> */}
                 </form>
               </div>
             </motion.div>
