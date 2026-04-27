@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
@@ -16,12 +15,14 @@ const __dirname = path.dirname(__filename);
 // -----------------------------
 // SANITY CLIENT
 // -----------------------------
-const sanity = createClient({
-  projectId: process.env.SANITY_PROJECT_ID!,
+const SANITY_PROJECT_ID = process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID;
+
+const sanity = SANITY_PROJECT_ID ? createClient({
+  projectId: SANITY_PROJECT_ID,
   dataset: process.env.SANITY_DATASET || 'production',
   apiVersion: process.env.SANITY_API_VERSION || '2024-01-01',
   useCdn: true,
-});
+}) : null;
 
 // -----------------------------
 // USERS (TEMP IN-MEMORY)
@@ -121,6 +122,9 @@ export async function createApp() {
   // -----------------------------
   app.get('/api/articles', async (_, res) => {
     try {
+      if (!sanity) {
+        return res.status(500).json({ message: 'Sanity not configured' });
+      }
       const query = `
         *[_type == "post"] | order(publishedAt desc) {
           _id,
@@ -146,6 +150,9 @@ export async function createApp() {
   // Create article in Sanity (optional)
   app.post('/api/articles', async (req, res) => {
     try {
+      if (!sanity) {
+        return res.status(500).json({ message: 'Sanity not configured' });
+      }
       const doc = {
         _type: 'post',
         title: req.body.title,
@@ -188,6 +195,8 @@ async function startServer() {
   // VITE DEV SERVER (Only for Local Dev)
   // -----------------------------
   if (process.env.NODE_ENV !== 'production') {
+    // Dynamic import to avoid loading Vite in production
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
