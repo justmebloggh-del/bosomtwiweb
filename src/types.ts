@@ -9,6 +9,7 @@ export interface Article {
   image: string;
   content?: string;
   videoUrl?: string;
+  status?: string;
 }
 
 export interface User {
