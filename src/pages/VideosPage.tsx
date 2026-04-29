@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Article } from '../types';
 import { motion } from 'motion/react';
 import { Play, Youtube, Clock, ArrowRight } from 'lucide-react';
+import KenteBanner from '../components/KenteBanner';
 
 interface VideosPageProps {
   articles: Article[];
@@ -38,25 +39,17 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
   return (
     <div className="bg-news-bg min-h-screen text-news-text">
 
-      {/* Header */}
-      <header className="bg-black py-12 md:py-16 border-b-4 border-ashanti-gold">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
-                <Youtube size={20} className="text-white" />
-              </div>
-              <span className="text-ashanti-gold text-[11px] uppercase font-black tracking-[0.5em]">Video Reports</span>
-            </div>
-            <h1 className="font-heading text-6xl md:text-8xl font-black text-white uppercase leading-none tracking-tighter">
-              Videos
-            </h1>
-            <p className="mt-3 text-white/40 text-sm">
-              {videoArticles.length} video {videoArticles.length === 1 ? 'report' : 'reports'} from our newsroom
-            </p>
-          </motion.div>
-        </div>
-      </header>
+      <KenteBanner
+        title="Videos"
+        badge="Video Reports"
+        description="Watch the latest video reports from our newsroom."
+        count={`${videoArticles.length} video ${videoArticles.length === 1 ? 'report' : 'reports'}`}
+        above={
+          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
+            <Youtube size={20} className="text-white" />
+          </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 

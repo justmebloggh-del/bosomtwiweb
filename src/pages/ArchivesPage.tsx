@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Article } from '../types';
 import { motion } from 'motion/react';
 import { Search, Archive, Clock, Filter, ArrowRight, X } from 'lucide-react';
+import KenteBanner from '../components/KenteBanner';
 
 interface ArchivesPageProps {
   articles: Article[];
@@ -53,25 +54,13 @@ export default function ArchivesPage({ articles, onArticleClick, loading }: Arch
   return (
     <div className="bg-news-bg min-h-screen text-news-text">
 
-      {/* Header */}
-      <header className="relative bg-brand-surface border-b border-brand-secondary/20 py-14 md:py-20 overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-ashanti-gold opacity-3 blur-[120px] -mr-48 -mt-48" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex items-center gap-3 mb-3">
-              <Archive size={20} className="text-ashanti-gold" />
-              <span className="text-ashanti-gold text-[11px] uppercase font-black tracking-[0.5em]">Complete Archive</span>
-            </div>
-            <h1 className="font-heading text-6xl md:text-8xl font-black text-news-text uppercase leading-none tracking-tighter">
-              Archives
-            </h1>
-            <p className="mt-3 text-news-text/40 text-sm max-w-lg">
-              Every story we've ever published, searchable and organised by date and section.
-              {' '}<span className="font-bold text-news-text/60">{articles.length} articles</span> total.
-            </p>
-          </motion.div>
-        </div>
-      </header>
+      <KenteBanner
+        title="Archives"
+        badge="Complete Archive"
+        description="Every story we've published, searchable and organised by date and section."
+        count={`${articles.length} articles total`}
+        above={<Archive size={20} className="text-ashanti-gold" />}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 

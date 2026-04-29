@@ -1,6 +1,7 @@
 import { Article } from '../types';
 import { motion } from 'motion/react';
 import { TrendingUp, Clock, ArrowRight, Flame } from 'lucide-react';
+import KenteBanner from '../components/KenteBanner';
 
 interface TrendingPageProps {
   articles: Article[];
@@ -45,36 +46,12 @@ export default function TrendingPage({ articles, onArticleClick, loading }: Tren
   return (
     <div className="bg-news-bg min-h-screen text-news-text">
 
-      {/* Header */}
-      <header className="relative bg-black overflow-hidden py-16 md:py-24 border-b-4 border-ashanti-gold">
-        <div className="absolute inset-0 opacity-10">
-          {[...Array(6)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{ y: [0, -20, 0], opacity: [0.2, 0.5, 0.2] }}
-              transition={{ duration: 3 + i, repeat: Infinity, delay: i * 0.5 }}
-              className="absolute text-ashanti-gold font-black text-8xl font-heading"
-              style={{ left: `${i * 20}%`, top: `${20 + i * 10}%` }}
-            >
-              #{i + 1}
-            </motion.div>
-          ))}
-        </div>
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex items-center gap-3 mb-4">
-              <Flame size={24} className="text-ashanti-gold" />
-              <span className="text-ashanti-gold text-[11px] uppercase font-black tracking-[0.5em]">Most Read Right Now</span>
-            </div>
-            <h1 className="font-heading text-6xl md:text-9xl font-black text-white uppercase leading-none tracking-tighter">
-              Trending
-            </h1>
-            <p className="mt-4 text-white/40 text-sm max-w-xl">
-              The most read stories across all sections — updated continuously by our newsroom.
-            </p>
-          </motion.div>
-        </div>
-      </header>
+      <KenteBanner
+        title="Trending"
+        badge="Most Read Right Now"
+        description="The most read stories across all sections — updated continuously by our newsroom."
+        above={<div className="flex items-center gap-2"><Flame size={18} className="text-ashanti-gold" /></div>}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
