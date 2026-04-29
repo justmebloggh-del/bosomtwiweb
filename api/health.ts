@@ -37,7 +37,7 @@ export default async function handler(req: any, res: any) {
 
   if (sbUrl && sbKey) {
     try {
-      const { createClient } = require('@supabase/supabase-js');
+      const { createClient } = await import('@supabase/supabase-js');
       const db = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
       const { error } = await db.from('articles').select('id').limit(1);
       report.supabase_query = error ? `✗ ${error.message}` : '✓ connected';
