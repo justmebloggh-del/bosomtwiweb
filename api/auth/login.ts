@@ -1,5 +1,5 @@
 // POST /api/auth/login
-import { db, cors, bcrypt, jwt, JWT_SECRET, seedIfEmpty } from '../_lib';
+import { getDb, cors, bcrypt, jwt, JWT_SECRET, seedIfEmpty } from '../_lib';
 
 export default async function handler(req: any, res: any) {
   cors(res);
@@ -9,15 +9,14 @@ export default async function handler(req: any, res: any) {
   try {
     await seedIfEmpty();
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password required' });
 
-    const { data: user, error } = await db
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
+    const { data: user, error } = await getDb()
+      .from('users').select('*').eq('email', email).single();
 
-    if (error || !user?.password) return res.status(401).json({ message: 'Invalid credentials' });
+    if (error || !user?.password)
+      return res.status(401).json({ message: 'Invalid credentials' });
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: 'Invalid credentials' });

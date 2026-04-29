@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LayoutDashboard, FileText, Settings, Users, BarChart3, Plus, Search,
   Trash2, CheckCircle, Clock, AlertTriangle,
@@ -947,7 +947,7 @@ function TabResearch() {
   );
 }
 
-function SidebarItem({ id, label, icon: Icon, active, onClick }: { id: string; label: string; icon: any; active: string; onClick: (id: string) => void }) {
+const SidebarItem: React.FC<{ id: string; label: string; icon: any; active: string; onClick: (id: string) => void }> = ({ id, label, icon: Icon, active, onClick }) => {
   const isActive = active === id;
   return (
     <button
