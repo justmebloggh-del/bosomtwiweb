@@ -6,9 +6,13 @@ interface FooterProps {
   onCategoryClick?: (category: string) => void;
 }
 
-const CATEGORIES = [
-  'Manhyia', 'Politics', 'Business', 'Sports', 'Technology',
-  'Entertainment', 'Health', 'Local', 'International',
+const CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle'];
+
+const SECTIONS = [
+  { label: 'Trending', page: 'trending' },
+  { label: 'Videos', page: 'videos' },
+  { label: 'Live', page: 'live' },
+  { label: 'Archives', page: 'archives' },
 ];
 
 const SOCIAL = [
@@ -31,21 +35,18 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newsletterEmail }),
       });
-      setSubscribed(true);
-      setNewsletterEmail('');
-    } catch {
-      setSubscribed(true);
-    }
+    } catch {}
+    setSubscribed(true);
+    setNewsletterEmail('');
   };
 
   return (
     <footer className="bg-brand-surface text-news-text pt-20 pb-10 border-t border-brand-secondary/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Main grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
 
-          {/* Branding — spans 2 cols on large screens */}
+          {/* Branding */}
           <div className="sm:col-span-2 lg:col-span-2">
             <button onClick={() => onCategoryClick?.('')} className="flex items-center mb-6 w-fit group">
               <img src="/logo.png" alt="Bosomtwi Web" className="h-12 w-auto object-contain group-hover:scale-105 transition-transform" />
@@ -55,7 +56,6 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               Committed to delivering the truth with integrity and passion since 2024.
             </p>
 
-            {/* Social icons */}
             <div className="flex gap-3 mb-8">
               {SOCIAL.map(({ Icon, href, label }) => (
                 <a
@@ -71,7 +71,6 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               ))}
             </div>
 
-            {/* Contact info */}
             <ul className="space-y-2 text-xs text-news-text/40">
               <li className="flex items-center gap-2">
                 <MapPin size={13} className="text-ashanti-gold shrink-0" />
@@ -90,10 +89,23 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
             </ul>
           </div>
 
-          {/* Sections */}
+          {/* Sections + Categories */}
           <div>
-            <h3 className="font-black uppercase tracking-widest text-[10px] mb-6 text-ashanti-gold">Sections</h3>
-            <ul className="space-y-3">
+            <h3 className="font-black uppercase tracking-widest text-[10px] mb-4 text-ashanti-gold">Sections</h3>
+            <ul className="space-y-2 mb-8">
+              {SECTIONS.map(({ label, page }) => (
+                <li key={page}>
+                  <button
+                    onClick={() => onNavigate?.(page)}
+                    className="text-xs font-bold uppercase tracking-widest text-news-text/40 hover:text-ashanti-gold transition-colors"
+                  >
+                    {label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <h3 className="font-black uppercase tracking-widest text-[10px] mb-4 text-ashanti-gold">Categories</h3>
+            <ul className="space-y-2">
               {CATEGORIES.map(cat => (
                 <li key={cat}>
                   <button
@@ -163,15 +175,9 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
         <div className="pt-8 border-t border-brand-secondary/10 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] uppercase tracking-widest text-news-text/25 font-bold">
           <p>© {new Date().getFullYear()} Bosomtwi Web Media. All rights reserved.</p>
           <div className="flex gap-6">
-            <button onClick={() => onNavigate?.('privacy')} className="hover:text-ashanti-gold transition-colors">
-              Privacy Policy
-            </button>
-            <button onClick={() => onNavigate?.('terms')} className="hover:text-ashanti-gold transition-colors">
-              Terms of Service
-            </button>
-            <button onClick={() => onNavigate?.('advertise')} className="hover:text-ashanti-gold transition-colors">
-              Advertise
-            </button>
+            <button onClick={() => onNavigate?.('privacy')} className="hover:text-ashanti-gold transition-colors">Privacy Policy</button>
+            <button onClick={() => onNavigate?.('terms')} className="hover:text-ashanti-gold transition-colors">Terms of Service</button>
+            <button onClick={() => onNavigate?.('advertise')} className="hover:text-ashanti-gold transition-colors">Advertise</button>
           </div>
         </div>
       </div>

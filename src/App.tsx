@@ -4,25 +4,30 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import ArticleView from './pages/ArticleView';
 import CategoryPage from './pages/CategoryPage';
-import AdminDashboard from './pages/AdminDashboard';
+import TrendingPage from './pages/TrendingPage';
+import VideosPage from './pages/VideosPage';
+import LivePage from './pages/LivePage';
+import ArchivesPage from './pages/ArchivesPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import Advertise from './pages/Advertise';
+import PublishModal from './components/PublishModal';
 import { Article, User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lock, Mail, ChevronRight, AlertCircle, Search, X } from 'lucide-react';
+import { Lock, Mail, ChevronRight, AlertCircle, Search, X, PenSquare } from 'lucide-react';
 
-type Page = 'home' | 'article' | 'admin' | 'category' | 'privacy' | 'terms' | 'advertise';
+type Page = 'home' | 'article' | 'category' | 'privacy' | 'terms' | 'advertise' | 'trending' | 'videos' | 'live' | 'archives';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [activeCategory, setActiveCategory] = useState<string>('');
+  const [activeCategory, setActiveCategory] = useState('');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showPublish, setShowPublish] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showLivePlayer, setShowLivePlayer] = useState(true);
 
@@ -31,13 +36,15 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  useEffect(() => {
+  const loadArticles = () => {
     setIsLoadingArticles(true);
     fetch('/api/articles')
       .then(res => res.ok ? res.json() : [])
-      .then(data => { setArticles(data); setIsLoadingArticles(false); })
+      .then(data => { setArticles(Array.isArray(data) ? data : []); setIsLoadingArticles(false); })
       .catch(() => { setArticles([]); setIsLoadingArticles(false); });
-  }, []);
+  };
+
+  useEffect(() => { loadArticles(); }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('bosomtwi_user');
@@ -55,13 +62,14 @@ export default function App() {
         body: JSON.stringify({ email, password }),
       });
       let data: any = {};
-      try { data = await res.json(); } catch { /* non-JSON response */ }
+      try { data = await res.json(); } catch {}
       if (!res.ok) throw new Error(data.message || `Server error (${res.status}) — check Vercel env vars`);
       localStorage.setItem('bosomtwi_token', data.token);
       localStorage.setItem('bosomtwi_user', JSON.stringify(data.user));
       setUser(data.user);
       setShowLoginModal(false);
-      setCurrentPage('admin');
+      setEmail('');
+      setPassword('');
     } catch (err: any) {
       setAuthError(err.message);
     } finally {
@@ -83,13 +91,8 @@ export default function App() {
   };
 
   const handleCategorySelect = (category: string) => {
-    if (!category) {
-      setCurrentPage('home');
-      setActiveCategory('');
-    } else {
-      setActiveCategory(category);
-      setCurrentPage('category');
-    }
+    if (!category) { setCurrentPage('home'); setActiveCategory(''); }
+    else { setActiveCategory(category); setCurrentPage('category'); }
     window.scrollTo(0, 0);
   };
 
@@ -97,6 +100,9 @@ export default function App() {
     setCurrentPage(page as Page);
     window.scrollTo(0, 0);
   };
+
+  // Derive default category for publish modal
+  const publishDefaultCategory = currentPage === 'category' ? activeCategory : undefined;
 
   const searchResults = searchQuery.trim().length > 1
     ? articles.filter(a =>
@@ -107,17 +113,12 @@ export default function App() {
       )
     : [];
 
-  if (currentPage === 'admin' && user) {
-    return <AdminDashboard onLogout={handleLogout} user={user} />;
-  }
-
   return (
     <div className="min-h-screen flex flex-col font-sans selection:bg-ashanti-gold selection:text-black bg-news-bg overflow-x-hidden text-news-text">
       <Navbar
         user={user}
         onLogout={handleLogout}
         onLoginClick={() => setShowLoginModal(true)}
-        onAdminClick={() => setCurrentPage('admin')}
         onCategoryClick={handleCategorySelect}
         onNavigate={handleNavigate}
         onSearchOpen={() => setShowSearch(true)}
@@ -126,38 +127,89 @@ export default function App() {
       <main className="flex-grow bg-news-bg relative">
         <AnimatePresence mode="wait">
           {currentPage === 'home' && (
-            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
+            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <Home onArticleClick={navigateToArticle} articles={articles} onCategoryClick={handleCategorySelect} loading={isLoadingArticles} />
             </motion.div>
           )}
           {currentPage === 'category' && (
-            <motion.div key={`cat-${activeCategory}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.35 }}>
-              <CategoryPage category={activeCategory} onArticleClick={navigateToArticle} articles={articles} onHomeClick={() => handleCategorySelect('')} loading={isLoadingArticles} />
+            <motion.div key={`cat-${activeCategory}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+              <CategoryPage
+                category={activeCategory}
+                onArticleClick={navigateToArticle}
+                articles={articles}
+                onHomeClick={() => handleCategorySelect('')}
+                loading={isLoadingArticles}
+                user={user}
+                onArticlePublished={loadArticles}
+              />
             </motion.div>
           )}
           {currentPage === 'article' && selectedArticle && (
-            <motion.div key="article" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35 }}>
-              <ArticleView article={selectedArticle} onBack={() => { setCurrentPage('home'); setSelectedArticle(null); }} relatedArticles={articles.filter(a => a.id !== selectedArticle.id)} onArticleClick={navigateToArticle} />
+            <motion.div key="article" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+              <ArticleView
+                article={selectedArticle}
+                onBack={() => { setCurrentPage('home'); setSelectedArticle(null); }}
+                relatedArticles={articles.filter(a => a.id !== selectedArticle.id)}
+                onArticleClick={navigateToArticle}
+              />
+            </motion.div>
+          )}
+          {currentPage === 'trending' && (
+            <motion.div key="trending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <TrendingPage articles={articles} onArticleClick={navigateToArticle} loading={isLoadingArticles} />
+            </motion.div>
+          )}
+          {currentPage === 'videos' && (
+            <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <VideosPage articles={articles} onArticleClick={navigateToArticle} loading={isLoadingArticles} />
+            </motion.div>
+          )}
+          {currentPage === 'live' && (
+            <motion.div key="live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <LivePage articles={articles} onArticleClick={navigateToArticle} />
+            </motion.div>
+          )}
+          {currentPage === 'archives' && (
+            <motion.div key="archives" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <ArchivesPage articles={articles} onArticleClick={navigateToArticle} loading={isLoadingArticles} />
             </motion.div>
           )}
           {currentPage === 'privacy' && (
-            <motion.div key="privacy" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
+            <motion.div key="privacy" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <PrivacyPolicy onBack={() => handleNavigate('home')} />
             </motion.div>
           )}
           {currentPage === 'terms' && (
-            <motion.div key="terms" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
+            <motion.div key="terms" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <TermsOfService onBack={() => handleNavigate('home')} />
             </motion.div>
           )}
           {currentPage === 'advertise' && (
-            <motion.div key="advertise" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
+            <motion.div key="advertise" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <Advertise onBack={() => handleNavigate('home')} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Persistent Draggable Live Video Player */}
+        {/* Floating compose button (logged-in users only) */}
+        <AnimatePresence>
+          {user && currentPage !== 'live' && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowPublish(true)}
+              className="fixed bottom-24 right-4 md:bottom-10 md:right-8 z-[90] w-14 h-14 bg-ashanti-gold text-black rounded-full shadow-2xl shadow-ashanti-gold/30 flex items-center justify-center border-2 border-ashanti-gold hover:bg-black hover:text-ashanti-gold transition-colors"
+              title="Publish new story"
+            >
+              <PenSquare size={22} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        {/* Persistent live video player */}
         <AnimatePresence>
           {showLivePlayer && (
             <motion.div
@@ -166,16 +218,12 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ delay: 1.5 }}
+              transition={{ delay: 2 }}
               className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-[100] w-60 md:w-80 aspect-video bg-black shadow-2xl border border-white/10 overflow-hidden touch-none rounded-xl"
             >
               <div className="absolute top-0 inset-x-0 h-7 bg-black/90 backdrop-blur-sm flex items-center justify-between px-3 z-10 border-b border-white/5">
                 <span className="text-[8px] font-black uppercase tracking-widest text-brand-primary italic">🔴 Live Feed</span>
-                <button
-                  onClick={() => setShowLivePlayer(false)}
-                  className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                  title="Close"
-                >
+                <button onClick={() => setShowLivePlayer(false)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors" title="Close">
                   <X size={12} />
                 </button>
               </div>
@@ -220,17 +268,13 @@ export default function App() {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search news, categories, authors..."
+                  placeholder="Search news, categories, authors…"
                   className="flex-grow text-lg font-sans text-news-text bg-transparent focus:outline-none placeholder:text-news-text/30"
                 />
-                <button
-                  onClick={() => { setShowSearch(false); setSearchQuery(''); }}
-                  className="ml-4 p-1.5 text-news-text/30 hover:text-news-text rounded-full hover:bg-gray-100 transition-all"
-                >
+                <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="ml-4 p-1.5 text-news-text/30 hover:text-news-text rounded-full hover:bg-gray-100 transition-all">
                   <X size={18} />
                 </button>
               </div>
-
               <div className="max-h-[65vh] overflow-y-auto">
                 {searchQuery.trim().length > 1 ? (
                   searchResults.length > 0 ? (
@@ -263,7 +307,7 @@ export default function App() {
                   <div className="p-6">
                     <p className="text-[10px] uppercase tracking-widest font-bold text-news-text/30 mb-4">Browse Sections</p>
                     <div className="flex flex-wrap gap-2">
-                      {['Manhyia', 'Politics', 'Business', 'Sports', 'Technology', 'Entertainment', 'Health', 'Local', 'International'].map(cat => (
+                      {['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle'].map(cat => (
                         <button
                           key={cat}
                           onClick={() => { handleCategorySelect(cat); setShowSearch(false); setSearchQuery(''); }}
@@ -278,6 +322,18 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Publish modal (from floating button) */}
+      <AnimatePresence>
+        {showPublish && user && (
+          <PublishModal
+            user={user}
+            defaultCategory={publishDefaultCategory}
+            onClose={() => setShowPublish(false)}
+            onPublished={() => { loadArticles(); setShowPublish(false); }}
+          />
         )}
       </AnimatePresence>
 
@@ -298,12 +354,12 @@ export default function App() {
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-brand-secondary/20 overflow-hidden"
             >
-              <div className="p-12">
+              <div className="p-10 md:p-12">
                 <div className="mb-10 text-center">
                   <div className="font-heading text-3xl font-black mb-2 tracking-tighter text-news-text">
                     BOSOMTWI <span className="text-brand-primary">WEB</span>
                   </div>
-                  <p className="text-news-text/40 text-[10px] font-black uppercase tracking-[0.3em]">Administrative Access</p>
+                  <p className="text-news-text/40 text-[10px] font-black uppercase tracking-[0.3em]">Journalist Access</p>
                 </div>
                 <form onSubmit={handleLogin} className="space-y-6">
                   <div className="space-y-2">
@@ -315,7 +371,7 @@ export default function App() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       className="w-full border-b-2 border-brand-accent bg-transparent py-3 font-semibold text-news-text focus:outline-none focus:border-brand-primary transition-all text-lg placeholder:text-news-text/20"
-                      placeholder="admin@bosomtwi.web"
+                      placeholder="you@bosomtwi.web"
                       required
                     />
                   </div>
@@ -341,18 +397,18 @@ export default function App() {
                       <AlertCircle size={14} /><span>{authError}</span>
                     </motion.div>
                   )}
-                  <div className="pt-6">
+                  <div className="pt-4">
                     <button
                       type="submit"
                       disabled={isAuthenticating}
-                      className="w-full bg-ashanti-gold hover:bg-black text-black hover:text-ashanti-gold py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+                      className="w-full bg-ashanti-gold hover:bg-black text-black hover:text-ashanti-gold py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-3 disabled:opacity-50 group"
                     >
-                      <span>{isAuthenticating ? 'Authenticating...' : 'Sign In Now'}</span>
+                      <span>{isAuthenticating ? 'Signing in…' : 'Sign In'}</span>
                       {!isAuthenticating && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                     </button>
                   </div>
-                  <p className="text-center text-[10px] uppercase tracking-widest font-bold text-news-text/30 pt-4">
-                    Access is restricted to authorised personnel only.
+                  <p className="text-center text-[10px] uppercase tracking-widest font-bold text-news-text/30 pt-2">
+                    Access restricted to authorised journalists only.
                   </p>
                 </form>
               </div>
