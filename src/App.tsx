@@ -54,8 +54,9 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Login failed');
+      let data: any = {};
+      try { data = await res.json(); } catch { /* non-JSON response */ }
+      if (!res.ok) throw new Error(data.message || `Server error (${res.status}) — check Vercel env vars`);
       localStorage.setItem('bosomtwi_token', data.token);
       localStorage.setItem('bosomtwi_user', JSON.stringify(data.user));
       setUser(data.user);
