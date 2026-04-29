@@ -39,9 +39,17 @@ export default function App() {
   const loadArticles = () => {
     setIsLoadingArticles(true);
     fetch('/api/articles')
-      .then(res => res.ok ? res.json() : [])
+      .then(async res => {
+        if (res.ok) return res.json();
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `API error ${res.status}`);
+      })
       .then(data => { setArticles(Array.isArray(data) ? data : []); setIsLoadingArticles(false); })
-      .catch(() => { setArticles([]); setIsLoadingArticles(false); });
+      .catch(err => {
+        console.error('[Bosomtwi] Failed to load articles:', err.message);
+        setArticles([]);
+        setIsLoadingArticles(false);
+      });
   };
 
   useEffect(() => { loadArticles(); }, []);
