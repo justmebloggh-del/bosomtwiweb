@@ -1,39 +1,44 @@
 // Shared helpers for all Vercel API routes.
 // Underscore prefix = Vercel treats this as a utility, not a route.
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 export { bcrypt, jwt };
 
-// ── Supabase — safe init (never throws at module load) ────────────
-const SB_URL =
-  process.env.SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL || '';
-
-const SB_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY || '';
-
-let _db: SupabaseClient | null = null;
-if (SB_URL && SB_KEY) {
-  try {
-    _db = createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
-  } catch (e) {
-    console.error('Supabase createClient failed:', e);
-  }
-} else {
-  console.error('Supabase env vars missing. Add SUPABASE_URL + SUPABASE_ANON_KEY to Vercel.');
+// ── Supabase — lazy init so a bad import never crashes the handler ─
+function getSbUrl() {
+  return (
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL || ''
+  );
 }
 
-// Call getDb() inside handlers — throws a JSON-safe error if unconfigured.
-export function getDb(): SupabaseClient {
-  if (!_db) throw new Error('Database not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY to your Vercel environment variables.');
+function getSbKey() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY || ''
+  );
+}
+
+let _db: any = null;
+
+export function getDb(): any {
+  if (_db) return _db;
+  const url = getSbUrl();
+  const key = getSbKey();
+  if (!url || !key) {
+    throw new Error(
+      `Supabase not configured. Set in Vercel dashboard: SUPABASE_URL="${url ? 'ok' : 'MISSING'}", SUPABASE_ANON_KEY="${key ? 'ok' : 'MISSING'}"`
+    );
+  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { createClient } = require('@supabase/supabase-js');
+  _db = createClient(url, key, { auth: { persistSession: false } });
   return _db;
 }
 
