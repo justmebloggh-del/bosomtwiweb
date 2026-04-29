@@ -13,6 +13,7 @@ import TermsOfService from './pages/TermsOfService';
 import Advertise from './pages/Advertise';
 import PublishModal from './components/PublishModal';
 import { Article, User } from './types';
+import { supabase, dbToArticle } from './lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Mail, ChevronRight, AlertCircle, Search, X, PenSquare } from 'lucide-react';
 
@@ -38,16 +39,13 @@ export default function App() {
 
   const loadArticles = () => {
     setIsLoadingArticles(true);
-    fetch('/api/articles')
-      .then(async res => {
-        if (res.ok) return res.json();
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `API error ${res.status}`);
-      })
-      .then(data => { setArticles(Array.isArray(data) ? data : []); setIsLoadingArticles(false); })
-      .catch(err => {
-        console.error('[Bosomtwi] Failed to load articles:', err.message);
-        setArticles([]);
+    supabase
+      .from('articles')
+      .select('*')
+      .order('published_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error('[Bosomtwi] Failed to load articles:', error.message);
+        setArticles(Array.isArray(data) ? data.map(dbToArticle) : []);
         setIsLoadingArticles(false);
       });
   };
@@ -55,26 +53,31 @@ export default function App() {
   useEffect(() => { loadArticles(); }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem('bosomtwi_user');
-    if (saved) { try { setUser(JSON.parse(saved)); } catch {} }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUser(sessionToUser(session.user));
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ? sessionToUser(session.user) : null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  function sessionToUser(u: any): User {
+    return {
+      id: u.id,
+      email: u.email ?? '',
+      name: u.user_metadata?.name || u.email?.split('@')[0] || 'Journalist',
+      role: u.user_metadata?.role || 'journalist',
+    };
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setIsAuthenticating(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      let data: any = {};
-      try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data.message || `Server error (${res.status}) — check Vercel env vars`);
-      localStorage.setItem('bosomtwi_token', data.token);
-      localStorage.setItem('bosomtwi_user', JSON.stringify(data.user));
-      setUser(data.user);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(error.message);
       setShowLoginModal(false);
       setEmail('');
       setPassword('');
@@ -85,10 +88,8 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('bosomtwi_token');
-    localStorage.removeItem('bosomtwi_user');
-    setUser(null);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setCurrentPage('home');
   };
 
@@ -109,7 +110,6 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Derive default category for publish modal
   const publishDefaultCategory = currentPage === 'category' ? activeCategory : undefined;
 
   const searchResults = searchQuery.trim().length > 1
@@ -199,15 +199,11 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Floating compose button (logged-in users only) */}
         <AnimatePresence>
           {user && currentPage !== 'live' && (
             <motion.button
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+              initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
               onClick={() => setShowPublish(true)}
               className="fixed bottom-24 right-4 md:bottom-10 md:right-8 z-[90] w-14 h-14 bg-ashanti-gold text-black rounded-full shadow-2xl shadow-ashanti-gold/30 flex items-center justify-center border-2 border-ashanti-gold hover:bg-black hover:text-ashanti-gold transition-colors"
               title="Publish new story"
@@ -217,32 +213,24 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Persistent live video player */}
         <AnimatePresence>
           {showLivePlayer && (
             <motion.div
-              drag
-              dragMomentum={false}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
+              drag dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }}
               transition={{ delay: 2 }}
               className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-[100] w-60 md:w-80 aspect-video bg-black shadow-2xl border border-white/10 overflow-hidden touch-none rounded-xl"
             >
               <div className="absolute top-0 inset-x-0 h-7 bg-black/90 backdrop-blur-sm flex items-center justify-between px-3 z-10 border-b border-white/5">
                 <span className="text-[8px] font-black uppercase tracking-widest text-brand-primary italic">🔴 Live Feed</span>
-                <button onClick={() => setShowLivePlayer(false)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors" title="Close">
-                  <X size={12} />
-                </button>
+                <button onClick={() => setShowLivePlayer(false)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors"><X size={12} /></button>
               </div>
               <iframe
-                width="100%"
-                height="100%"
+                width="100%" height="100%"
                 src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&controls=1&loop=1&playlist=STQpAHL5G5g&modestbranding=1&rel=0&playsinline=1"
                 title="Bosomtwi Web Live"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                style={{ border: 'none', paddingTop: '28px' }}
+                allowFullScreen style={{ border: 'none', paddingTop: '28px' }}
               />
             </motion.div>
           )}
@@ -251,51 +239,31 @@ export default function App() {
 
       <Footer onNavigate={handleNavigate} onCategoryClick={handleCategorySelect} />
 
-      {/* Search Overlay */}
+      {/* Search */}
       <AnimatePresence>
         {showSearch && (
           <div className="fixed inset-0 z-[200] flex flex-col px-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => { setShowSearch(false); setSearchQuery(''); }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative bg-white shadow-2xl w-full max-w-2xl mx-auto mt-24 rounded-2xl overflow-hidden"
-            >
+              className="relative bg-white shadow-2xl w-full max-w-2xl mx-auto mt-24 rounded-2xl overflow-hidden">
               <div className="flex items-center border-b border-brand-secondary/20 px-6 py-4">
                 <Search size={20} className="text-ashanti-gold shrink-0 mr-4" />
-                <input
-                  autoFocus
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                <input autoFocus type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search news, categories, authors…"
-                  className="flex-grow text-lg font-sans text-news-text bg-transparent focus:outline-none placeholder:text-news-text/30"
-                />
-                <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="ml-4 p-1.5 text-news-text/30 hover:text-news-text rounded-full hover:bg-gray-100 transition-all">
-                  <X size={18} />
-                </button>
+                  className="flex-grow text-lg font-sans text-news-text bg-transparent focus:outline-none placeholder:text-news-text/30" />
+                <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="ml-4 p-1.5 text-news-text/30 hover:text-news-text rounded-full hover:bg-gray-100 transition-all"><X size={18} /></button>
               </div>
               <div className="max-h-[65vh] overflow-y-auto">
                 {searchQuery.trim().length > 1 ? (
                   searchResults.length > 0 ? (
                     <div className="p-3">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-news-text/30 px-3 py-2">
-                        {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
-                      </p>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-news-text/30 px-3 py-2">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</p>
                       {searchResults.map(article => (
-                        <button
-                          key={article.id}
-                          onClick={() => { navigateToArticle(article); setShowSearch(false); setSearchQuery(''); }}
-                          className="w-full text-left flex items-start space-x-4 p-3 hover:bg-brand-surface rounded-xl transition-colors group"
-                        >
+                        <button key={article.id} onClick={() => { navigateToArticle(article); setShowSearch(false); setSearchQuery(''); }}
+                          className="w-full text-left flex items-start space-x-4 p-3 hover:bg-brand-surface rounded-xl transition-colors group">
                           <img src={article.image} alt="" className="w-14 h-14 object-cover rounded-lg shrink-0" />
                           <div className="min-w-0">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-ashanti-gold block mb-0.5">{article.category}</span>
@@ -308,7 +276,6 @@ export default function App() {
                   ) : (
                     <div className="text-center py-16 px-6">
                       <p className="text-news-text/30 font-heading italic text-xl">No results for "{searchQuery}"</p>
-                      <p className="text-news-text/20 text-sm mt-2">Try different keywords or browse a category below</p>
                     </div>
                   )
                 ) : (
@@ -316,13 +283,8 @@ export default function App() {
                     <p className="text-[10px] uppercase tracking-widest font-bold text-news-text/30 mb-4">Browse Sections</p>
                     <div className="flex flex-wrap gap-2">
                       {['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle'].map(cat => (
-                        <button
-                          key={cat}
-                          onClick={() => { handleCategorySelect(cat); setShowSearch(false); setSearchQuery(''); }}
-                          className="px-4 py-2 rounded-full bg-gray-100 text-[11px] font-bold uppercase tracking-wider text-news-text/70 hover:bg-ashanti-gold hover:text-black transition-all"
-                        >
-                          {cat}
-                        </button>
+                        <button key={cat} onClick={() => { handleCategorySelect(cat); setShowSearch(false); setSearchQuery(''); }}
+                          className="px-4 py-2 rounded-full bg-gray-100 text-[11px] font-bold uppercase tracking-wider text-news-text/70 hover:bg-ashanti-gold hover:text-black transition-all">{cat}</button>
                       ))}
                     </div>
                   </div>
@@ -333,15 +295,12 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Publish modal (from floating button) */}
+      {/* Publish modal */}
       <AnimatePresence>
         {showPublish && user && (
-          <PublishModal
-            user={user}
-            defaultCategory={publishDefaultCategory}
+          <PublishModal user={user} defaultCategory={publishDefaultCategory}
             onClose={() => setShowPublish(false)}
-            onPublished={() => { loadArticles(); setShowPublish(false); }}
-          />
+            onPublished={() => { loadArticles(); setShowPublish(false); }} />
         )}
       </AnimatePresence>
 
@@ -349,75 +308,43 @@ export default function App() {
       <AnimatePresence>
         {showLoginModal && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowLoginModal(false)}
-              className="absolute inset-0 bg-brand-surface/90 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-brand-secondary/20 overflow-hidden"
-            >
+              className="absolute inset-0 bg-brand-surface/90 backdrop-blur-md" />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-brand-secondary/20 overflow-hidden">
               <div className="p-10 md:p-12">
                 <div className="mb-10 text-center">
-                  <div className="font-heading text-3xl font-black mb-2 tracking-tighter text-news-text">
-                    BOSOMTWI <span className="text-brand-primary">WEB</span>
-                  </div>
+                  <div className="font-heading text-3xl font-black mb-2 tracking-tighter text-news-text">BOSOMTWI <span className="text-brand-primary">WEB</span></div>
                   <p className="text-news-text/40 text-[10px] font-black uppercase tracking-[0.3em]">Journalist Access</p>
                 </div>
                 <form onSubmit={handleLogin} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.2em] font-black text-news-text/40 flex items-center space-x-2">
-                      <Mail size={12} /><span>Email Address</span>
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
+                    <label className="text-[10px] uppercase tracking-[0.2em] font-black text-news-text/40 flex items-center space-x-2"><Mail size={12} /><span>Email Address</span></label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                       className="w-full border-b-2 border-brand-accent bg-transparent py-3 font-semibold text-news-text focus:outline-none focus:border-brand-primary transition-all text-lg placeholder:text-news-text/20"
-                      placeholder="you@bosomtwi.web"
-                      required
-                    />
+                      placeholder="you@bosomtwi.web" required />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.2em] font-black text-news-text/40 flex items-center space-x-2">
-                      <Lock size={12} /><span>Password</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
+                    <label className="text-[10px] uppercase tracking-[0.2em] font-black text-news-text/40 flex items-center space-x-2"><Lock size={12} /><span>Password</span></label>
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                       className="w-full border-b-2 border-brand-accent bg-transparent py-3 font-semibold text-news-text focus:outline-none focus:border-brand-primary transition-all text-lg placeholder:text-news-text/20"
-                      placeholder="••••••••"
-                      required
-                    />
+                      placeholder="••••••••" required />
                   </div>
                   {authError && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="flex items-center space-x-2 text-red-500 text-xs font-bold bg-red-50 p-3 rounded-lg border border-red-100"
-                    >
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                      className="flex items-center space-x-2 text-red-500 text-xs font-bold bg-red-50 p-3 rounded-lg border border-red-100">
                       <AlertCircle size={14} /><span>{authError}</span>
                     </motion.div>
                   )}
                   <div className="pt-4">
-                    <button
-                      type="submit"
-                      disabled={isAuthenticating}
-                      className="w-full bg-ashanti-gold hover:bg-black text-black hover:text-ashanti-gold py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-3 disabled:opacity-50 group"
-                    >
+                    <button type="submit" disabled={isAuthenticating}
+                      className="w-full bg-ashanti-gold hover:bg-black text-black hover:text-ashanti-gold py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-3 disabled:opacity-50 group">
                       <span>{isAuthenticating ? 'Signing in…' : 'Sign In'}</span>
                       {!isAuthenticating && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                     </button>
                   </div>
-                  <p className="text-center text-[10px] uppercase tracking-widest font-bold text-news-text/30 pt-2">
-                    Access restricted to authorised journalists only.
-                  </p>
+                  <p className="text-center text-[10px] uppercase tracking-widest font-bold text-news-text/30 pt-2">Access restricted to authorised journalists only.</p>
                 </form>
               </div>
             </motion.div>

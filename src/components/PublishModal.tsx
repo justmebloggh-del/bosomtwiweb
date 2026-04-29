@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { User } from '../types';
+import { supabase } from '../lib/supabase';
 
 const ALL_CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle'];
 
@@ -32,21 +33,24 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
       setStatus({ text: 'Headline and excerpt are required.', type: 'error' });
       return;
     }
-    const token = localStorage.getItem('bosomtwi_token');
     setPublishing(true);
     setStatus({ text: '', type: '' });
     try {
-      const res = await fetch('/api/articles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ ...form, publishedAt: new Date().toISOString(), status: 'published' }),
+      const slug = form.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const { error } = await supabase.from('articles').insert({
+        id: String(Date.now()),
+        title: form.title,
+        slug,
+        category: form.category,
+        author: form.author,
+        published_at: new Date().toISOString(),
+        excerpt: form.excerpt,
+        content: form.content,
+        image: form.image || 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800',
+        video_url: form.videoUrl || '',
+        status: 'published',
       });
-      let data: any = {};
-      try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data.message || 'Publish failed');
+      if (error) throw new Error(error.message);
       setStatus({ text: 'Story is live!', type: 'success' });
       setTimeout(() => { onPublished(); onClose(); }, 900);
     } catch (err: any) {
