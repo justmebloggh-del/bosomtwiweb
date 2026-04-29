@@ -1,5 +1,5 @@
 // POST /api/auth/login
-import { getDb, cors, bcrypt, jwt, JWT_SECRET, seedIfEmpty } from '../_lib';
+import { getDb, cors, bcrypt, jwt, JWT_SECRET } from '../_lib';
 
 export default async function handler(req: any, res: any) {
   cors(res);
@@ -7,7 +7,6 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
 
   try {
-    await seedIfEmpty();
     const { email, password } = req.body || {};
     if (!email || !password)
       return res.status(400).json({ message: 'Email and password required' });

@@ -8,7 +8,7 @@ export default async function handler(req: any, res: any) {
 
   if (req.method === 'GET') {
     try {
-      await seedIfEmpty();
+      await seedIfEmpty().catch(e => console.error('Seed error (non-fatal):', e.message));
       const { data, error } = await getDb()
         .from('articles')
         .select('*')
