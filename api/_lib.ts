@@ -282,25 +282,32 @@ export const DEFAULT_USERS_PLAIN = [
   { id:'4', name:'Kofi Mensah',  email:'kofi@bosomtwi.web',  role:'journalist', pw:'news2025' },
 ];
 
-// Idempotent upsert — safe even on concurrent cold starts.
+// Always upsert the canonical seed articles (IDs '1'–'20').
+// User-published articles have timestamp IDs so they are never overwritten.
+// Also seeds default users on first run only (avoids resetting passwords).
 export async function seedIfEmpty() {
   const db = getDb();
   try {
-    const [{ count: ac }, { count: uc }] = await Promise.all([
-      db.from('articles').select('*', { count: 'exact', head: true }),
-      db.from('users').select('*',    { count: 'exact', head: true }),
-    ]);
-    if ((ac ?? 0) === 0)
-      await db.from('articles').upsert(DEFAULT_ARTICLES.map(articleToDb), { onConflict: 'id' });
+    const { error: artErr } = await db
+      .from('articles')
+      .upsert(DEFAULT_ARTICLES.map(articleToDb), { onConflict: 'id' });
+    if (artErr) throw artErr;
+
+    const { count: uc } = await db
+      .from('users')
+      .select('*', { count: 'exact', head: true });
     if ((uc ?? 0) === 0) {
       const hashed = await Promise.all(DEFAULT_USERS_PLAIN.map(async u => ({
         id: u.id, name: u.name, email: u.email, role: u.role,
         password: await bcrypt.hash(u.pw, 10),
       })));
-      await db.from('users').upsert(hashed, { onConflict: 'id' });
+      const { error: usrErr } = await db
+        .from('users')
+        .upsert(hashed, { onConflict: 'id' });
+      if (usrErr) throw usrErr;
     }
   } catch (err) {
-    console.error('Seed failed (run supabase/schema.sql first):', err);
+    console.error('Seed failed — ensure supabase/schema.sql has been run and env vars are set:', err);
     throw err;
   }
 }
