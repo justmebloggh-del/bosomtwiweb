@@ -1,12 +1,20 @@
-import { useState, type FormEvent } from 'react';
-import { Facebook, Twitter, Instagram, Youtube, Mail, MapPin, Phone } from 'lucide-react';
+import { useState } from 'react';
+import { Facebook, Instagram, Youtube, Mail, MapPin, Phone } from 'lucide-react';
+
+function TikTokIcon({ size = 17, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
+    </svg>
+  );
+}
 
 interface FooterProps {
   onNavigate?: (page: string) => void;
   onCategoryClick?: (category: string) => void;
 }
 
-const CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle'];
+const CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle', 'International'];
 
 const SECTIONS = [
   { label: 'Trending', page: 'trending' },
@@ -16,26 +24,19 @@ const SECTIONS = [
 ];
 
 const SOCIAL = [
-  { Icon: Facebook, href: 'https://facebook.com/bosomtwiweb', label: 'Facebook' },
-  { Icon: Twitter, href: 'https://twitter.com/bosomtwiweb', label: 'X / Twitter' },
-  { Icon: Instagram, href: 'https://instagram.com/bosomtwiweb', label: 'Instagram' },
-  { Icon: Youtube, href: 'https://youtube.com/@bosomtwiweb', label: 'YouTube' },
+  { Icon: Facebook,  href: 'https://www.facebook.com/share/1B519RZZYj/?mibextid=wwXIfr', label: 'Facebook' },
+  { Icon: Instagram, href: 'https://www.instagram.com/bosomtwi_web?igsh=MXZoNXY5MWRmMzV3bQ%3D%3D&utm_source=qr', label: 'Instagram' },
+  { Icon: Youtube,   href: 'https://youtube.com/@bosomtwi_web_news?si=Q1xhFNZ42xo4uKeM', label: 'YouTube' },
+  { Icon: TikTokIcon, href: 'https://www.tiktok.com/@bosomtwi_web_news?_r=1&_t=ZS-95g3WG3MCer', label: 'TikTok' },
 ];
 
 export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
-  const handleSubscribe = async (e: FormEvent) => {
+  const handleSubscribe = (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!newsletterEmail) return;
-    try {
-      await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newsletterEmail }),
-      });
-    } catch {}
     setSubscribed(true);
     setNewsletterEmail('');
   };
