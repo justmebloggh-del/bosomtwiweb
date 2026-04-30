@@ -19,28 +19,29 @@ CREATE TABLE IF NOT EXISTS public.articles (
 -- ── Row Level Security ───────────────────────────────────────────
 ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
 
--- Anyone (including anonymous visitors) can read published articles
-CREATE POLICY "Public can read published articles"
-  ON public.articles FOR SELECT
-  USING (status = 'published');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Public can read published articles') THEN
+    CREATE POLICY "Public can read published articles" ON public.articles FOR SELECT USING (status = 'published');
+  END IF;
+END $$;
 
--- Authenticated users (journalists/editors/admins) can insert
-CREATE POLICY "Authenticated users can insert articles"
-  ON public.articles FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can insert articles') THEN
+    CREATE POLICY "Authenticated users can insert articles" ON public.articles FOR INSERT TO authenticated WITH CHECK (true);
+  END IF;
+END $$;
 
--- Authenticated users can update articles
-CREATE POLICY "Authenticated users can update articles"
-  ON public.articles FOR UPDATE
-  TO authenticated
-  USING (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can update articles') THEN
+    CREATE POLICY "Authenticated users can update articles" ON public.articles FOR UPDATE TO authenticated USING (true);
+  END IF;
+END $$;
 
--- Authenticated users can delete articles
-CREATE POLICY "Authenticated users can delete articles"
-  ON public.articles FOR DELETE
-  TO authenticated
-  USING (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can delete articles') THEN
+    CREATE POLICY "Authenticated users can delete articles" ON public.articles FOR DELETE TO authenticated USING (true);
+  END IF;
+END $$;
 
 -- ── Seed articles (April 2026) ───────────────────────────────────
 -- Safe to re-run: ON CONFLICT DO NOTHING skips duplicates
