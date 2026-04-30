@@ -159,6 +159,8 @@ export default function App() {
                 onBack={() => { setCurrentPage('home'); setSelectedArticle(null); }}
                 relatedArticles={articles.filter(a => a.id !== selectedArticle.id)}
                 onArticleClick={navigateToArticle}
+                user={user}
+                onArticleUpdated={loadArticles}
               />
             </motion.div>
           )}

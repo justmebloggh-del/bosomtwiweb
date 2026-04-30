@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload } from 'lucide-react';
+import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine } from 'lucide-react';
 import { motion } from 'motion/react';
-import { User } from '../types';
+import { User, Article } from '../types';
 import { supabase } from '../lib/supabase';
 
 const ALL_CATEGORIES = [
@@ -12,35 +12,38 @@ const ALL_CATEGORIES = [
 interface PublishModalProps {
   user: User;
   defaultCategory?: string;
+  editArticle?: Article;        // when provided → edit mode
   onClose: () => void;
   onPublished: () => void;
 }
 
-export default function PublishModal({ user, defaultCategory, onClose, onPublished }: PublishModalProps) {
+export default function PublishModal({ user, defaultCategory, editArticle, onClose, onPublished }: PublishModalProps) {
+  const isEdit = !!editArticle;
+
   const [form, setForm] = useState({
-    title: '',
-    category: defaultCategory && ALL_CATEGORIES.includes(defaultCategory) ? defaultCategory : ALL_CATEGORIES[0],
-    image: '',
-    videoUrl: '',
-    excerpt: '',
-    content: '',
-    author: user.name,
+    title:    isEdit ? editArticle.title    : '',
+    category: isEdit
+      ? editArticle.category
+      : (defaultCategory && ALL_CATEGORIES.includes(defaultCategory) ? defaultCategory : ALL_CATEGORIES[0]),
+    image:    isEdit ? editArticle.image    : '',
+    videoUrl: isEdit ? (editArticle.videoUrl ?? '') : '',
+    excerpt:  isEdit ? editArticle.excerpt  : '',
+    content:  isEdit ? (editArticle.content ?? '') : '',
+    author:   isEdit ? editArticle.author   : user.name,
   });
+
   const [imageMode, setImageMode] = useState<'url' | 'upload'>('url');
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading]   = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [status, setStatus] = useState({ text: '', type: '' });
-  const [publishing, setPublishing] = useState(false);
+  const [status, setStatus]         = useState({ text: '', type: '' });
+  const [saving, setSaving]         = useState(false);
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
 
   const handleImageUpload = async (e: { target: HTMLInputElement }) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Image must be under 5 MB.');
-      return;
-    }
+    if (file.size > 5 * 1024 * 1024) { setUploadError('Image must be under 5 MB.'); return; }
     setUploading(true);
     setUploadError('');
     try {
@@ -50,9 +53,7 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
         .from('article-images')
         .upload(path, file, { cacheControl: '3600', upsert: false });
       if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage
-        .from('article-images')
-        .getPublicUrl(data.path);
+      const { data: { publicUrl } } = supabase.storage.from('article-images').getPublicUrl(data.path);
       set('image', publicUrl);
     } catch (err: any) {
       setUploadError(err.message || 'Upload failed — check storage bucket exists.');
@@ -61,35 +62,49 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
     }
   };
 
-  const handlePublish = async () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !form.excerpt.trim()) {
       setStatus({ text: 'Headline and excerpt are required.', type: 'error' });
       return;
     }
-    setPublishing(true);
+    setSaving(true);
     setStatus({ text: '', type: '' });
     try {
       const slug = form.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const { error } = await supabase.from('articles').insert({
-        id: String(Date.now()),
-        title: form.title,
+      const payload = {
+        title:        form.title,
         slug,
-        category: form.category,
-        author: form.author,
-        published_at: new Date().toISOString(),
-        excerpt: form.excerpt,
-        content: form.content,
-        image: form.image || 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800',
-        video_url: form.videoUrl || '',
-        status: 'published',
-      });
-      if (error) throw new Error(error.message);
-      setStatus({ text: 'Story is live!', type: 'success' });
+        category:     form.category,
+        author:       form.author,
+        excerpt:      form.excerpt,
+        content:      form.content,
+        image:        form.image || 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800',
+        video_url:    form.videoUrl || '',
+        status:       'published',
+      };
+
+      if (isEdit) {
+        const { error } = await supabase
+          .from('articles')
+          .update(payload)
+          .eq('id', editArticle.id);
+        if (error) throw new Error(error.message);
+        setStatus({ text: 'Article updated!', type: 'success' });
+      } else {
+        const { error } = await supabase.from('articles').insert({
+          id: String(Date.now()),
+          published_at: new Date().toISOString(),
+          ...payload,
+        });
+        if (error) throw new Error(error.message);
+        setStatus({ text: 'Story is live!', type: 'success' });
+      }
+
       setTimeout(() => { onPublished(); onClose(); }, 900);
     } catch (err: any) {
-      setStatus({ text: err.message || 'Publish failed. Check your connection.', type: 'error' });
+      setStatus({ text: err.message || 'Save failed. Check your connection.', type: 'error' });
     } finally {
-      setPublishing(false);
+      setSaving(false);
     }
   };
 
@@ -102,11 +117,14 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
         className="bg-white w-full md:max-w-2xl md:rounded-[2rem] shadow-2xl overflow-hidden my-0 md:my-6"
       >
         {/* Header */}
-        <div className="p-5 md:p-6 border-b border-slate-200 flex justify-between items-center bg-black text-white sticky top-0 z-10">
+        <div className={`p-5 md:p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10 text-white ${isEdit ? 'bg-[#1a0a35]' : 'bg-black'}`}>
           <div>
-            <h2 className="text-lg md:text-xl font-black italic tracking-tight">Publish New Story</h2>
+            <h2 className="text-lg md:text-xl font-black italic tracking-tight flex items-center gap-2">
+              {isEdit ? <PenLine size={18} /> : <Share2 size={18} />}
+              {isEdit ? 'Edit Article' : 'Publish New Story'}
+            </h2>
             <p className="text-[10px] uppercase tracking-widest text-white/40 mt-0.5">
-              {user.name} · {user.role}
+              {user.name} · {user.role}{isEdit ? ' · editing' : ''}
             </p>
           </div>
           <button
@@ -187,7 +205,6 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
               <ImageIcon size={11} /> Cover Image
             </label>
 
-            {/* Mode toggle */}
             <div className="flex rounded-xl overflow-hidden border border-slate-200 text-[10px] font-black uppercase tracking-widest">
               <button
                 type="button"
@@ -246,7 +263,6 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
               </div>
             )}
 
-            {/* Image preview (both modes) */}
             {form.image && !uploading && (
               <div className="relative">
                 <img
@@ -282,7 +298,7 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest font-black text-slate-400">Full Article Body</label>
             <textarea
-              rows={8}
+              rows={9}
               value={form.content}
               onChange={e => set('content', e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm leading-relaxed focus:outline-none focus:border-ashanti-gold transition-all resize-none placeholder:text-slate-300"
@@ -290,17 +306,20 @@ export default function PublishModal({ user, defaultCategory, onClose, onPublish
             />
           </div>
 
-          {/* Publish button */}
+          {/* Save / Publish button */}
           <button
-            onClick={handlePublish}
-            disabled={publishing || uploading}
-            className="w-full bg-ashanti-gold text-black py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-sm md:text-base"
+            onClick={handleSave}
+            disabled={saving || uploading}
+            className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-sm md:text-base ${
+              isEdit
+                ? 'bg-[#1a0a35] text-white hover:bg-black'
+                : 'bg-ashanti-gold text-black'
+            }`}
           >
-            {publishing ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
-            <span>{publishing ? 'Publishing…' : 'Publish Story'}</span>
+            {saving ? <Loader2 size={18} className="animate-spin" /> : isEdit ? <PenLine size={18} /> : <Share2 size={18} />}
+            <span>{saving ? (isEdit ? 'Saving…' : 'Publishing…') : (isEdit ? 'Save Changes' : 'Publish Story')}</span>
           </button>
 
-          {/* Bottom safe-area spacer for mobile */}
           <div className="h-4 md:h-0" />
         </div>
       </motion.div>
