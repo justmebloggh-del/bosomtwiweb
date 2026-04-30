@@ -133,18 +133,21 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
             <AdBanner size="wide" className="my-8" />
 
             <div className="space-y-8 text-[18px]">
-              <p>
-                The heart of Kumasi continues to evolve, blending centuries of royal tradition with the rapid pace of 21st-century innovation. As the regional capital and historical seat of the Ashanti Empire, the city serves as a beacon for cultural preservation and economic vitality across West Africa.
-              </p>
-              <p>
-                Recent developments spearheaded by the Manhyia Palace focus on sustainable urban expansion and the protection of heritage sites. By collaborating with both local stakeholders and international conservation groups, the Ashanti Region is setting a global standard for how modern cities can flourish without losing their spiritual and ancestral foundations.
-              </p>
-              <div className="py-8 flex justify-center space-x-4">
-                {[1,2,3].map(i => <div key={i} className="w-1.5 h-1.5 bg-ashanti-gold rounded-full" />)}
-              </div>
-              <p>
-                The digital era has brought new tools for storytelling. Bosomtwi Web aims to be at the forefront of this movement, ensuring that every significant event—from the grand durbars of the Golden Stool to the latest local business successes—is documented with the gravity and precision it deserves.
-              </p>
+              {article.content
+                ? article.content
+                    .split(/\n\n+/)
+                    .map((para, i, arr) => (
+                      <span key={i}>
+                        <p className="leading-relaxed">{para.trim()}</p>
+                        {i === Math.floor(arr.length / 2) - 1 && arr.length > 2 && (
+                          <div className="py-8 flex justify-center space-x-4">
+                            {[1, 2, 3].map(dot => <div key={dot} className="w-1.5 h-1.5 bg-ashanti-gold rounded-full" />)}
+                          </div>
+                        )}
+                      </span>
+                    ))
+                : <p className="text-news-text/40 italic">Full article body not available.</p>
+              }
             </div>
           </div>
 
