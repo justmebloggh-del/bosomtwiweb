@@ -25,6 +25,7 @@ const DESCRIPTIONS: Record<string, string> = {
   Entertainment: 'Music, film, arts, celebrity, and cultural highlights.',
   Technology:    'Innovation, digital transformation, and science in Africa.',
   Lifestyle:     'Health, wellness, travel, food, and everyday living.',
+  International: 'World news, global affairs, and Africa on the world stage.',
 };
 
 export default function CategoryPage({

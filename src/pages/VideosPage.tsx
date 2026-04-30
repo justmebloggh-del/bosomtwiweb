@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { Article } from '../types';
-import { motion } from 'motion/react';
-import { Play, Youtube, Clock, ArrowRight } from 'lucide-react';
+import { Article, User } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { Play, Youtube, Clock, ArrowRight, PenSquare } from 'lucide-react';
 import KenteBanner from '../components/KenteBanner';
+import PublishModal from '../components/PublishModal';
 
 interface VideosPageProps {
   articles: Article[];
   onArticleClick: (article: Article) => void;
   loading?: boolean;
+  user?: User | null;
+  onArticlePublished?: () => void;
 }
 
 function getYouTubeId(url: string): string | null {
@@ -21,9 +24,10 @@ function getEmbedUrl(url: string): string | null {
   return id ? `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1` : null;
 }
 
-export default function VideosPage({ articles, onArticleClick, loading }: VideosPageProps) {
+export default function VideosPage({ articles, onArticleClick, loading, user, onArticlePublished }: VideosPageProps) {
   const videoArticles = articles.filter(a => !!a.videoUrl);
   const [featured, setFeatured] = useState<Article | null>(videoArticles[0] || null);
+  const [showPublish, setShowPublish] = useState(false);
 
   if (loading) {
     return (
@@ -49,6 +53,17 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
             <Youtube size={20} className="text-white" />
           </div>
         }
+        actions={
+          user ? (
+            <button
+              onClick={() => setShowPublish(true)}
+              className="inline-flex items-center gap-2 bg-ashanti-gold text-black px-5 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-ashanti-gold/30"
+            >
+              <PenSquare size={16} />
+              <span>Add Video Story</span>
+            </button>
+          ) : null
+        }
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -57,7 +72,17 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
           <div className="text-center py-32">
             <Play size={48} className="mx-auto mb-4 text-news-text/10" />
             <p className="font-heading text-2xl text-news-text/30 italic uppercase">No video reports yet</p>
-            <p className="text-sm text-news-text/20 mt-2">Video content will appear here as journalists publish stories with YouTube links.</p>
+            <p className="text-sm text-news-text/20 mt-2">
+              Video content will appear here as journalists publish stories with YouTube links.
+            </p>
+            {user && (
+              <button
+                onClick={() => setShowPublish(true)}
+                className="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-ashanti-gold text-black rounded-xl font-bold uppercase tracking-widest hover:scale-105 transition-all text-sm"
+              >
+                <PenSquare size={16} /> Publish First Video Story
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -97,10 +122,7 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
                       </div>
                     )}
                   </div>
-                  <div
-                    onClick={() => onArticleClick(featured)}
-                    className="cursor-pointer group"
-                  >
+                  <div onClick={() => onArticleClick(featured)} className="cursor-pointer group">
                     <span className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold block mb-1">{featured.category}</span>
                     <h2 className="font-heading text-2xl md:text-3xl font-bold text-news-text group-hover:text-ashanti-gold transition-colors leading-tight">
                       {featured.title}
@@ -132,11 +154,7 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
                     >
                       <div className="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-200">
                         {thumbId ? (
-                          <img
-                            src={`https://img.youtube.com/vi/${thumbId}/mqdefault.jpg`}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={`https://img.youtube.com/vi/${thumbId}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <img src={article.image} alt="" className="w-full h-full object-cover opacity-60" />
                         )}
@@ -160,7 +178,7 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
           </div>
         )}
 
-        {/* All other articles with video as grid */}
+        {/* Full video archive grid */}
         {videoArticles.length > 1 && (
           <div className="mt-16">
             <h2 className="text-[10px] font-black uppercase tracking-widest text-news-text/30 border-b border-brand-secondary/10 pb-4 mb-8">
@@ -207,6 +225,17 @@ export default function VideosPage({ articles, onArticleClick, loading }: Videos
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {showPublish && user && (
+          <PublishModal
+            user={user}
+            defaultCategory="Entertainment"
+            onClose={() => setShowPublish(false)}
+            onPublished={() => { onArticlePublished?.(); setShowPublish(false); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

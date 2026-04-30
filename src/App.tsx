@@ -169,7 +169,7 @@ export default function App() {
           )}
           {currentPage === 'videos' && (
             <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <VideosPage articles={articles} onArticleClick={navigateToArticle} loading={isLoadingArticles} />
+              <VideosPage articles={articles} onArticleClick={navigateToArticle} loading={isLoadingArticles} user={user} onArticlePublished={loadArticles} />
             </motion.div>
           )}
           {currentPage === 'live' && (
@@ -216,22 +216,42 @@ export default function App() {
         <AnimatePresence>
           {showLivePlayer && (
             <motion.div
-              drag dragMomentum={false}
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }}
+              drag dragMomentum={false} dragElastic={0}
+              initial={{ opacity: 0, scale: 0.9, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 16 }}
               transition={{ delay: 2 }}
-              className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-[100] w-60 md:w-80 aspect-video bg-black shadow-2xl border border-white/10 overflow-hidden touch-none rounded-xl"
+              className="fixed bottom-4 right-2 left-2 md:left-auto md:right-8 md:bottom-8 z-[100] md:w-80 bg-black shadow-2xl border border-white/10 overflow-hidden rounded-xl"
             >
-              <div className="absolute top-0 inset-x-0 h-7 bg-black/90 backdrop-blur-sm flex items-center justify-between px-3 z-10 border-b border-white/5">
-                <span className="text-[8px] font-black uppercase tracking-widest text-brand-primary italic">🔴 Live Feed</span>
-                <button onClick={() => setShowLivePlayer(false)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors"><X size={12} /></button>
+              {/* Drag handle — touch-action managed by motion, safe to grab */}
+              <div className="h-8 bg-black flex items-center justify-between px-3 border-b border-white/5 cursor-grab active:cursor-grabbing select-none">
+                <div className="flex items-center gap-2">
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="w-1.5 h-1.5 bg-red-500 rounded-full"
+                  />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-white/60 italic">🔴 Live Feed</span>
+                </div>
+                <button
+                  onClick={() => setShowLivePlayer(false)}
+                  style={{ touchAction: 'auto' }}
+                  className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/10"
+                >
+                  <X size={13} />
+                </button>
               </div>
-              <iframe
-                width="100%" height="100%"
-                src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&controls=1&loop=1&playlist=STQpAHL5G5g&modestbranding=1&rel=0&playsinline=1"
-                title="Bosomtwi Web Live"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen style={{ border: 'none', paddingTop: '28px' }}
-              />
+              {/* Video — touchAction:auto lets YouTube volume/scrub controls work on mobile */}
+              <div className="aspect-video" style={{ touchAction: 'auto' }}>
+                <iframe
+                  width="100%" height="100%"
+                  src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&controls=1&loop=1&playlist=STQpAHL5G5g&modestbranding=1&rel=0&playsinline=1"
+                  title="Bosomtwi Web Live"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  style={{ border: 'none', display: 'block', touchAction: 'auto' }}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

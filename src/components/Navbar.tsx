@@ -11,7 +11,7 @@ interface NavbarProps {
   onSearchOpen: () => void;
 }
 
-const CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle'];
+const CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle', 'International'];
 
 const SECTIONS = [
   { id: 'trending', label: 'Trending', Icon: TrendingUp },

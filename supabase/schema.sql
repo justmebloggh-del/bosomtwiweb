@@ -106,3 +106,72 @@ VALUES
    'The Ashanti Regional Health Service has launched a month-long free maternal care initiative covering antenatal consultations, delivery services, and postnatal follow-up visits at all 22 district hospitals. The campaign, funded by a combination of government allocation and NGO support, aims to reduce the region''s maternal mortality ratio which, while declining, still stands above the national target. Community health workers are conducting door-to-door outreach to register expectant mothers ahead of the May rollout.',
    'https://images.unsplash.com/photo-1527613426441-4da17471b66d?auto=format&fit=crop&q=80&w=800', 'published')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── International seed articles (April 2026) ─────────────────────
+INSERT INTO public.articles (id, title, slug, category, author, published_at, excerpt, content, image, status)
+VALUES
+  ('seed-int-001', 'African Union Summit Backs New Continental Free-Trade Enforcement Body',
+   'au-summit-free-trade-enforcement', 'International', 'Bosomtwi World', '2026-04-28T09:00:00Z',
+   'Heads of state meeting in Addis Ababa agreed to establish a standing body to resolve disputes under the AfCFTA and accelerate intra-African trade.',
+   'The 40th African Union Summit concluded with a landmark agreement to create a permanent AfCFTA Dispute Resolution and Enforcement Secretariat. The body, to be headquartered in Accra, will have binding arbitration powers over trade disagreements between member states. Ghana''s President hailed the move as "the most important step in African economic integration since the AfCFTA''s launch." Implementation timelines and funding contributions from member states are to be finalised at a follow-up ministerial meeting in June.',
+   'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&q=80&w=800', 'published'),
+
+  ('seed-int-002', 'IMF Raises West Africa Growth Forecast to 5.8% for 2026',
+   'imf-west-africa-growth-forecast-2026', 'International', 'Bosomtwi World', '2026-04-27T10:00:00Z',
+   'The International Monetary Fund''s latest Regional Economic Outlook upgrades West Africa''s growth projection, citing commodity export recovery and stronger domestic demand.',
+   'The IMF''s April 2026 Sub-Saharan Africa Regional Economic Outlook revised West Africa''s aggregate GDP growth forecast upward to 5.8 percent, the highest projection for any developing region globally this year. Ghana, Côte d''Ivoire, and Senegal were cited as the primary growth engines, driven by oil and cocoa revenues, infrastructure spending, and expanding fintech sectors. The Fund cautioned that fiscal consolidation and debt management remain critical risks for several nations in the region.',
+   'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800', 'published'),
+
+  ('seed-int-003', 'UN Climate Council Approves $50bn Africa Green Energy Fund',
+   'un-climate-africa-green-energy-fund', 'International', 'Bosomtwi World', '2026-04-26T08:00:00Z',
+   'A new $50 billion fund will support solar, wind, and mini-grid projects across 35 African nations over the next decade.',
+   'The UN Climate Council voted 142–8 to establish the Africa Green Energy Transition Fund, the largest dedicated climate-finance instrument for the continent in history. The fund will deploy $50 billion over ten years to support utility-scale solar and wind installations, off-grid mini-grids in rural communities, and green hydrogen pilot projects. Ghana is among twelve countries on the priority access list, expected to receive early tranches to accelerate its 2030 renewable energy target.',
+   'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&q=80&w=800', 'published'),
+
+  ('seed-int-004', 'Nigeria and Ghana Sign Landmark Border Trade Facilitation Pact',
+   'nigeria-ghana-border-trade-pact', 'International', 'Bosomtwi World', '2026-04-25T07:30:00Z',
+   'The two largest West African economies have agreed to a joint border-management protocol to cut cross-border clearance times from 72 hours to under 8 hours.',
+   'Presidents of Nigeria and Ghana signed a Border Trade Facilitation Pact in Accra on Friday, pledging to deploy a joint digital customs clearance system at the Aflao-Seme crossing by the end of 2026. The agreement is expected to boost bilateral trade, currently estimated at $2.3 billion annually, by at least 30 percent within three years. Business associations in both countries welcomed the move, calling it overdue given the two nations'' historical ties and complementary economies.',
+   'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800', 'published'),
+
+  ('seed-int-005', 'Chinese Investment in African Infrastructure Hits Record $38bn in 2025',
+   'chinese-investment-african-infrastructure-2025', 'International', 'Bosomtwi World', '2026-04-24T09:00:00Z',
+   'A new Johns Hopkins SAIS report finds Chinese state-backed lenders and contractors committed a record $38 billion to African infrastructure in 2025, reversing a five-year decline.',
+   'The China-Africa Research Initiative at Johns Hopkins SAIS released its annual report showing Chinese financial commitments to African infrastructure reached $38 billion in 2025 — the highest since 2016 and a 22 percent increase over 2024. Roads, railways, and energy projects accounted for the bulk of investment. Researchers noted a shift toward smaller, commercially structured deals replacing the sovereign-guaranteed mega-loans of the previous decade, reducing debt-distress risks for recipient nations.',
+   'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80&w=800', 'published')
+ON CONFLICT (id) DO NOTHING;
+
+-- ── Supabase Storage — article image uploads ─────────────────────
+-- Run these in the Supabase SQL Editor AFTER creating the bucket
+-- via Dashboard → Storage → New bucket (name: article-images, Public: ON)
+
+-- Allow authenticated users to upload images
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+      AND policyname = 'Auth users can upload article images'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY "Auth users can upload article images"
+        ON storage.objects FOR INSERT TO authenticated
+        WITH CHECK (bucket_id = 'article-images');
+    $policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+      AND policyname = 'Public can view article images'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY "Public can view article images"
+        ON storage.objects FOR SELECT TO public
+        USING (bucket_id = 'article-images');
+    $policy$;
+  END IF;
+END $$;
