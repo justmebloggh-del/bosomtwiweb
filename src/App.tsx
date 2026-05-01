@@ -16,6 +16,7 @@ import { Article, User } from './types';
 import { supabase, dbToArticle } from './lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Mail, ChevronRight, AlertCircle, Search, X, PenSquare } from 'lucide-react';
+import { Analytics } from "@vercel/analytics/next";
 
 type Page = 'home' | 'article' | 'category' | 'privacy' | 'terms' | 'advertise' | 'trending' | 'videos' | 'live' | 'archives';
 
