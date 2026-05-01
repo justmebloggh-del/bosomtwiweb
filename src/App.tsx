@@ -245,14 +245,7 @@ export default function App() {
               </div>
               {/* Video — touchAction:auto lets YouTube volume/scrub controls work on mobile */}
               <div className="aspect-video" style={{ touchAction: 'auto' }}>
-                <iframe
-                  width="100%" height="100%"
-                  src="https://www.youtube.com/live/y99chr0KUfY?si=nxu_V2btxNLaEb2W"
-                  title="Bosomtwi Web Live"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  style={{ border: 'none', display: 'block', touchAction: 'auto' }}
-                />
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/y99chr0KUfY?si=yyGZh8sS0bY9re0f" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
               </div>
             </motion.div>
           )}
