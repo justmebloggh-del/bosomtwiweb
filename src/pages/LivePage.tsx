@@ -7,7 +7,6 @@ interface LivePageProps {
   onArticleClick: (article: Article) => void;
 }
 
-// ...existing code...
 export default function LivePage({ articles, onArticleClick }: LivePageProps) {
   const latest = articles.slice(0, 8);
   const streamAvailable = false; // Set to false to show the message
@@ -27,22 +26,9 @@ export default function LivePage({ articles, onArticleClick }: LivePageProps) {
               {/* Glow effect */}
               <div className="absolute -inset-1 bg-ashanti-gold/20 rounded-[2rem] blur-xl" />
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-900 shadow-2xl border border-white/10 flex items-center justify-center">
-                {streamAvailable ? (
-                  <iframe
-                    width="560"
-                    height="315"
-                    src="https://www.youtube.com/embed/y99chr0KUfY?si=yyGZh8sS0bY9re0f"
-                    title="YouTube video player"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  ></iframe>
-                ) : (
-                  <div className="flex flex-col items-center justify-center w-full h-full">
-                    <span className="text-white/70 text-lg font-bold">This live stream recording is not available.</span>
-                  </div>
-                )}
+                <div className="flex flex-col items-center justify-center w-full h-full">
+                  <span className="text-white/70 text-lg font-bold">This live stream recording is not available.</span>
+                </div>
               </div>
             </motion.div>
             {/* ...existing code... */}
