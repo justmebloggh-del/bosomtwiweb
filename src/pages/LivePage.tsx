@@ -44,15 +44,7 @@ export default function LivePage({ articles, onArticleClick }: LivePageProps) {
               {/* Glow effect */}
               <div className="absolute -inset-1 bg-ashanti-gold/20 rounded-[2rem] blur-xl" />
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-900 shadow-2xl border border-white/10">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=0&controls=1&rel=0&modestbranding=1&playsinline=1"
-                  title="Bosomtwi Web Live"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  style={{ border: 'none' }}
-                />
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/y99chr0KUfY?si=yyGZh8sS0bY9re0f" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
               </div>
             </motion.div>
 
