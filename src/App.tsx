@@ -247,7 +247,7 @@ export default function App() {
               <div className="aspect-video" style={{ touchAction: 'auto' }}>
                 <iframe
                   width="100%" height="100%"
-                  src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&controls=1&loop=1&playlist=STQpAHL5G5g&modestbranding=1&rel=0&playsinline=1"
+                  src="https://www.youtube.com/live/OR8A4sZT1RY?si=0WMOr7QdKTIpbulS"
                   title="Bosomtwi Web Live"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
