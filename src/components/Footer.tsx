@@ -54,7 +54,7 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
             </button>
             <p className="text-news-text/40 max-w-md mb-8 leading-relaxed text-base italic">
               The premier destination for news, analysis, and culture in the Ashanti Region and beyond.
-              Committed to delivering the truth with integrity and passion since 2024.
+              Committed to delivering the truth with integrity and passion.
             </p>
 
             <div className="flex gap-3 mb-8">
@@ -79,12 +79,12 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               </li>
               <li className="flex items-center gap-2">
                 <Phone size={13} className="text-ashanti-gold shrink-0" />
-                <span>+233 (0) 302 000 000</span>
+                <span>+233 (0) 0241 963 600</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail size={13} className="text-ashanti-gold shrink-0" />
                 <a href="mailto:info@bosomtwi.web" className="hover:text-ashanti-gold transition-colors">
-                  info@bosomtwi.web
+                  bosomtwiweb@gmail.com/ info@bosomtwi.web
                 </a>
               </li>
             </ul>
