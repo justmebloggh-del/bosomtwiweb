@@ -69,7 +69,7 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
             <iframe
               width="100%"
               height="100%"
-              src="https://www.youtube.com/embed/STQpAHL5G5g?autoplay=1&mute=1&loop=1&playlist=STQpAHL5G5g&controls=0&modestbranding=1&rel=0"
+              src="https://www.youtube.com/embed/wHmkUO1mkL0?si=bVrQuMSWbAjRcD1K"
               title="Bosomtwi Web Live Hero"
               style={{ border: 'none' }}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

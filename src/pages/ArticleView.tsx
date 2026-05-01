@@ -162,7 +162,16 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
           {/* Embedded video */}
           {article.videoUrl && (
             <div className="mt-12 mb-16 bg-gray-100 rounded-2xl shadow-xl overflow-hidden aspect-video">
-              {article.videoUrl.includes('youtube.com') || article.videoUrl.includes('youtu.be') ? (
+              {article.videoUrl === 'LIVE_FEED' ? (
+                <iframe
+                  className="w-full h-full"
+                  src="https://www.youtube.com/embed/wHmkUO1mkL0?si=bVrQuMSWbAjRcD1K"
+                  title="Live Feed"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  style={{ border: 'none' }}
+                />
+              ) : article.videoUrl.includes('youtube.com') || article.videoUrl.includes('youtu.be') ? (
                 <iframe
                   className="w-full h-full"
                   src={`https://www.youtube.com/embed/${

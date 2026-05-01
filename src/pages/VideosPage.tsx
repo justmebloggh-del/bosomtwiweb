@@ -15,6 +15,8 @@ interface VideosPageProps {
 
 function getYouTubeId(url: string): string | null {
   if (!url) return null;
+  // Always return the live stream ID for the live feed
+  if (url === 'LIVE_FEED') return 'wHmkUO1mkL0';
   const match = url.match(/(?:v=|youtu\.be\/|embed\/)([^&?/\s]{11})/);
   return match ? match[1] : null;
 }
