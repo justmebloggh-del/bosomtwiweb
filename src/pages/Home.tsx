@@ -76,6 +76,18 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
               allowFullScreen
               className="scale-105 group-hover:scale-100 transition-transform duration-[2000ms]"
             />
+            {/*
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/ccqUbUJtgPc?si=mFieoeGcHOMGJe-d"
+              title="Other Video (commented out)"
+              style={{ border: 'none' }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="scale-105 group-hover:scale-100 transition-transform duration-[2000ms]"
+            />
+            */}
             <div className="absolute top-6 left-6 z-10">
               <span className="bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 shadow-lg">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />

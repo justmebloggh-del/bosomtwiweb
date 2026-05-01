@@ -226,7 +226,7 @@ export default function App() {
               className="fixed bottom-4 right-2 left-2 md:left-auto md:right-8 md:bottom-8 z-[100] md:w-80 bg-black shadow-2xl border border-white/10 overflow-hidden rounded-xl"
             >
               {/* Drag handle — touch-action managed by motion, safe to grab */}
-              <div className="h-8 bg-black flex items-center justify-between px-3 border-b border-white/5 cursor-grab active:cursor-grabbing select-none">
+              {/*<div className="h-8 bg-black flex items-center justify-between px-3 border-b border-white/5 cursor-grab active:cursor-grabbing select-none">
                 <div className="flex items-center gap-2">
                   <motion.span
                     animate={{ opacity: [1, 0.3, 1] }}
@@ -244,9 +244,9 @@ export default function App() {
                 </button>
               </div>
               {/* Video — touchAction:auto lets YouTube volume/scrub controls work on mobile */}
-              <div className="aspect-video" style={{ touchAction: 'auto' }}>
-                <iframe width="560" height="315" src="https://www.youtube.com/embed/y99chr0KUfY?si=yyGZh8sS0bY9re0f" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-              </div>
+              {/*<div className="aspect-video" style={{ touchAction: 'auto' }}>
+
+              </div>*/}
             </motion.div>
           )}
         </AnimatePresence>
