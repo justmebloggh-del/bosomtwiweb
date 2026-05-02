@@ -110,7 +110,7 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
           {/* Featured Articles */}
           {articles.length > 0 && (
             <div className="p-8 lg:p-10 grid grid-cols-1 md:grid-cols-2 gap-10 border-t border-brand-secondary/20">
-              {articles.slice(0, 4).map(article => (
+              {articles.slice(0, 2).map(article => (
                 <div key={article.id} onClick={() => onArticleClick(article)} className="cursor-pointer">
                   <ArticleCard article={article} />
                 </div>
