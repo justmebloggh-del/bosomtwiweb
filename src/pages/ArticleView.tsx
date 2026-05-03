@@ -211,6 +211,21 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
               </div>
             </div>
           </section>
+
+          {/* Disclaimer Section */}
+          <section className="mt-12 md:mt-16 p-6 md:p-8 bg-brand-surface border border-brand-secondary/20 rounded-2xl">
+            <div className="flex items-start gap-4">
+              <div className="w-1.5 h-1.5 bg-ashanti-gold rounded-full mt-2 shrink-0" />
+              <div>
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-ashanti-gold mb-3">
+                  Disclaimer
+                </h3>
+                <p className="text-sm md:text-base text-news-text/70 leading-relaxed">
+                  The Views, Comments, Opinions, Contributions and Statements made by Readers and Contributors on this platform do not necessarily represent the views or policy of <span className="font-bold text-news-text">BOSOMTWI MEDIA NETWORK</span>
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
 
         {/* Sidebar */}

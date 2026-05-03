@@ -94,7 +94,7 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
                 Live Transmission
               </span>
             </div>
-            <div className="absolute bottom-0 inset-x-0 p-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none text-white">
+            /*<div className="absolute bottom-0 inset-x-0 p-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none text-white">
               <span className="text-ashanti-gold text-[11px] font-black uppercase tracking-[0.4em] mb-3 block">
                 
               </span>
