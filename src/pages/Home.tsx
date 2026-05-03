@@ -10,15 +10,6 @@ interface HomeProps {
 
 const FILTER_TABS = ['All', 'Manhyia', 'Politics', 'Business', 'Sports', 'Technology', 'Entertainment', 'Health', 'Local', 'International'];
 
-const BREAKING_NEWS = [
-  'Lake Bosomtwe Conservation Project Gains Global Recognition',
-  'Cocoa Export Revenues Surge 12% in Ashanti Region',
-  'New Tech Hub Opens in Kumasi — 5,000 Engineering Seats Available',
-  'Asante Kotoko FC Clinches Ghana Premier League Title',
-  'Otumfuo Foundation Launches Record 2,000-Student Scholarship Programme',
-  'Ghana Signs Historic Trade Deal with the European Union',
-];
-
 export default function Home({ onArticleClick, articles, onCategoryClick, loading }: HomeProps) {
   if (loading) {
     return (
@@ -44,10 +35,10 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
         <div className="overflow-hidden flex-1">
           <div className="flex items-center whitespace-nowrap animate-marquee">
             {[1, 2, 3].map(n =>
-              BREAKING_NEWS.map((item, i) => (
+              articles.map((item, i) => (
                 <span key={`${n}-${i}`} className="text-[11px] font-bold uppercase tracking-[0.15em] flex items-center mr-12 text-news-text/80">
                   <span className="w-1.5 h-1.5 bg-red-500 rotate-45 mr-3 inline-block" />
-                  {item}
+                  {item.title}
                 </span>
               ))
             )}
