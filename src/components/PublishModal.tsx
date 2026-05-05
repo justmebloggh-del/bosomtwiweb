@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine, Bold, Italic, Type, Image, Play, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { User, Article } from '../types';
@@ -120,6 +120,49 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
       setStatus({ text: err.message || 'Save failed. Check your connection.', type: 'error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Add these handlers above the return statement
+  const handleBodyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setStatus({ text: 'Image must be under 10 MB.', type: 'error' }); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `body-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('article-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from('article-images').getPublicUrl(data.path);
+      set('content', form.content + `\n[image]${publicUrl}[/image]\n`);
+    } catch (err: any) {
+      setStatus({ text: err.message || 'Upload failed — check storage bucket exists.', type: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleBodyVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { setStatus({ text: 'Video must be under 50 MB.', type: 'error' }); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'mp4';
+      const path = `body-video-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('article-videos')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from('article-videos').getPublicUrl(data.path);
+      set('content', form.content + `\n[video]${publicUrl}[/video]\n`);
+    } catch (err: any) {
+      setStatus({ text: err.message || 'Upload failed — check storage bucket exists.', type: 'error' });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -404,6 +447,15 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
               >
                 <Play size={14} /> Video
               </button>
+
+              <label className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="Upload Image">
+                <Image size={14} /> Upload Image
+                <input type="file" accept="image/*" className="hidden" onChange={handleBodyImageUpload} disabled={uploading} />
+              </label>
+              <label className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="Upload Video">
+                <Play size={14} /> Upload Video
+                <input type="file" accept="video/*" className="hidden" onChange={handleBodyVideoUpload} disabled={uploading} />
+              </label>
             </div>
 
             {/* Content Textarea */}
