@@ -14,6 +14,15 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [analytics, setAnalytics] = useState<any>(null);
   const [settings, setSettings] = useState<any>({});
 
+  // Author management state
+  const [newAuthor, setNewAuthor] = useState({ name: '', email: '', role: 'journalist' });
+  const [authorStatus, setAuthorStatus] = useState('');
+
+  // Settings state
+  const [siteTitle, setSiteTitle] = useState(settings.siteTitle || 'Bosomtwi Web');
+  const [themeColor, setThemeColor] = useState(settings.themeColor || '#FFD700');
+  const [settingsStatus, setSettingsStatus] = useState('');
+
   useEffect(() => {
     fetchArticles();
     fetchAuthors();
@@ -32,6 +41,33 @@ export default function AdminDashboard({ user }: { user: User }) {
     // Example: fetch views, top articles, etc.
     const { data } = await supabase.rpc('get_article_analytics');
     setAnalytics(data || {});
+  }
+
+  // Add author (admin only)
+  async function handleAddAuthor(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthorStatus('');
+    const { data, error } = await supabase.from('users').insert([
+      { name: newAuthor.name, email: newAuthor.email, role: newAuthor.role, created_at: new Date().toISOString() },
+    ]);
+    if (error) {
+      setAuthorStatus('Failed to add author.');
+    } else {
+      setAuthorStatus('Author added!');
+      setNewAuthor({ name: '', email: '', role: 'journalist' });
+      fetchAuthors();
+    }
+  }
+
+  // Save settings
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setSettingsStatus('');
+    // Example: Save to a settings table (or local state for demo)
+    setSettings({ siteTitle, themeColor });
+    setSettingsStatus('Settings saved!');
+    // Optionally, update in Supabase if you have a settings table
+    // await supabase.from('settings').upsert({ siteTitle, themeColor });
   }
 
   return (
@@ -119,6 +155,39 @@ export default function AdminDashboard({ user }: { user: User }) {
         {tab === 'Authors' && (
           <div>
             <h2 className="text-xl font-bold mb-4">Authors</h2>
+            {/* Admins can add authors */}
+            {user.role === 'admin' && (
+              <form className="bg-white rounded-xl p-5 mb-6 flex flex-col gap-3 border border-brand-secondary/10" onSubmit={handleAddAuthor}>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    className="border p-2 rounded w-1/3"
+                    value={newAuthor.name}
+                    onChange={e => setNewAuthor({ ...newAuthor, name: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className="border p-2 rounded w-1/3"
+                    value={newAuthor.email}
+                    onChange={e => setNewAuthor({ ...newAuthor, email: e.target.value })}
+                    required
+                  />
+                  <select
+                    className="border p-2 rounded w-1/4"
+                    value={newAuthor.role}
+                    onChange={e => setNewAuthor({ ...newAuthor, role: e.target.value })}
+                  >
+                    <option value="journalist">Journalist</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <button type="submit" className="bg-ashanti-gold text-black px-4 rounded font-bold">Add</button>
+                </div>
+                {authorStatus && <div className="text-xs text-green-600 mt-1">{authorStatus}</div>}
+              </form>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {authors.map(author => (
                 <div key={author.id} className="bg-white rounded-xl p-5 flex flex-col gap-2 border border-brand-secondary/10">
@@ -134,7 +203,27 @@ export default function AdminDashboard({ user }: { user: User }) {
         {tab === 'Settings' && (
           <div>
             <h2 className="text-xl font-bold mb-4">Settings</h2>
-            <div className="bg-white rounded-xl p-6">Settings panel coming soon…</div>
+            <form className="bg-white rounded-xl p-6 flex flex-col gap-4 max-w-lg" onSubmit={handleSaveSettings}>
+              <label className="font-bold">Site Title
+                <input
+                  type="text"
+                  className="border p-2 rounded w-full mt-1"
+                  value={siteTitle}
+                  onChange={e => setSiteTitle(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="font-bold">Theme Color
+                <input
+                  type="color"
+                  className="border p-2 rounded w-16 h-10 mt-1"
+                  value={themeColor}
+                  onChange={e => setThemeColor(e.target.value)}
+                />
+              </label>
+              <button type="submit" className="bg-ashanti-gold text-black px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl">Save Settings</button>
+              {settingsStatus && <div className="text-xs text-green-600 mt-1">{settingsStatus}</div>}
+            </form>
           </div>
         )}
       </div>
