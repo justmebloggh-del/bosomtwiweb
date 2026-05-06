@@ -24,13 +24,30 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
       if (authError) throw new Error(authError.message);
 
       // Fetch user profile from users table
-      const { data: userData, error: userError } = await supabase
+      let { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', authData.user.id)
         .single();
 
-      if (userError) throw new Error('User profile not found. Please contact admin.');
+      // If user profile not found, create it
+      if (userError || !userData) {
+        const { data: insertData, error: insertError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: authData.user.id,
+              email: authData.user.email,
+              name: authData.user.user_metadata?.full_name || authData.user.email,
+              role: 'journalist', // Default role, adjust as needed
+              created_at: new Date().toISOString(),
+            },
+          ])
+          .select()
+          .single();
+        if (insertError) throw new Error('Failed to create user profile. Please contact admin.');
+        userData = insertData;
+      }
 
       // Check if user has journalist or admin access
       if (userData.role !== 'journalist' && userData.role !== 'admin') {
