@@ -11,6 +11,8 @@ import ArchivesPage from './pages/ArchivesPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import Advertise from './pages/Advertise';
+import AdminDashboard from './pages/AdminDashboard';
+import Login from './pages/Login';
 import PublishModal from './components/PublishModal';
 import { Article, User } from './types';
 import { supabase, dbToArticle } from './lib/supabase';
@@ -19,7 +21,7 @@ import { Lock, Mail, ChevronRight, AlertCircle, Search, X, PenSquare } from 'luc
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-type Page = 'home' | 'article' | 'category' | 'privacy' | 'terms' | 'advertise' | 'trending' | 'videos' | 'live' | 'archives';
+type Page = 'home' | 'article' | 'category' | 'privacy' | 'terms' | 'advertise' | 'trending' | 'videos' | 'live' | 'archives' | 'admin' | 'login';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -83,6 +85,10 @@ export default function App() {
       setShowLoginModal(false);
       setEmail('');
       setPassword('');
+      // Redirect journalist to admin dashboard
+      if (user?.role === 'journalist' || user?.role === 'admin') {
+        setCurrentPage('admin');
+      }
     } catch (err: any) {
       setAuthError(err.message);
     } finally {
@@ -128,14 +134,28 @@ export default function App() {
       <Navbar
         user={user}
         onLogout={handleLogout}
-        onLoginClick={() => setShowLoginModal(true)}
+        onLoginClick={() => setCurrentPage('login')}
         onCategoryClick={handleCategorySelect}
         onNavigate={handleNavigate}
         onSearchOpen={() => setShowSearch(true)}
+        onAdminClick={() => setCurrentPage('admin')}
       />
 
       <main className="flex-grow bg-news-bg relative">
         <AnimatePresence mode="wait">
+          {currentPage === 'login' && (
+            <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <Login onLoginSuccess={(loggedInUser) => {
+                setUser(loggedInUser);
+                setCurrentPage('admin');
+              }} />
+            </motion.div>
+          )}
+          {currentPage === 'admin' && user && (user.role === 'journalist' || user.role === 'admin') && (
+            <motion.div key="admin" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <AdminDashboard user={user} />
+            </motion.div>
+          )}
           {currentPage === 'home' && (
             <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <Home onArticleClick={navigateToArticle} articles={articles} onCategoryClick={handleCategorySelect} loading={isLoadingArticles} />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, Search, LogOut, ChevronRight, Radio, TrendingUp, Video, Archive, X } from 'lucide-react';
+import { Menu, Search, LogOut, ChevronRight, Radio, TrendingUp, Video, Archive, X, LayoutGrid } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface NavbarProps {
@@ -9,6 +9,7 @@ interface NavbarProps {
   onCategoryClick: (category: string) => void;
   onNavigate: (page: string) => void;
   onSearchOpen: () => void;
+  onAdminClick?: () => void;
 }
 
 const CATEGORIES = ['Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Lifestyle', 'International'];
@@ -20,7 +21,7 @@ const SECTIONS = [
   { id: 'archives', label: 'Archives', Icon: Archive },
 ];
 
-export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, onNavigate, onSearchOpen }: NavbarProps) {
+export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, onNavigate, onSearchOpen, onAdminClick }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const close = () => setMenuOpen(false);
@@ -56,6 +57,16 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
             {user ? (
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-black text-white/40 hidden sm:block">{user.name}</span>
+                {(user.role === 'journalist' || user.role === 'admin') && (
+                  <button
+                    onClick={onAdminClick}
+                    className="flex items-center gap-1.5 px-3 h-9 text-[10px] font-black uppercase tracking-widest text-ashanti-gold hover:text-white hover:bg-ashanti-gold/10 transition-all rounded"
+                    title="Admin Dashboard"
+                  >
+                    <LayoutGrid size={11} />
+                    <span className="hidden sm:inline">Admin</span>
+                  </button>
+                )}
                 <button
                   onClick={onLogout}
                   className="flex items-center gap-1.5 px-3 h-9 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-red-400 transition-colors"
