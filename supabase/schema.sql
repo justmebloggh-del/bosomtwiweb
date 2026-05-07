@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.articles (
   content      TEXT DEFAULT '',
   image        TEXT DEFAULT '',
   video_url    TEXT DEFAULT '',
+  views        INTEGER DEFAULT 0,
   status       TEXT DEFAULT 'published'
 );
 
@@ -141,6 +142,30 @@ VALUES
    'The China-Africa Research Initiative at Johns Hopkins SAIS released its annual report showing Chinese financial commitments to African infrastructure reached $38 billion in 2025 — the highest since 2016 and a 22 percent increase over 2024. Roads, railways, and energy projects accounted for the bulk of investment. Researchers noted a shift toward smaller, commercially structured deals replacing the sovereign-guaranteed mega-loans of the previous decade, reducing debt-distress risks for recipient nations.',
    'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80&w=800', 'published')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── Users table ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.users (
+  id uuid PRIMARY KEY, -- must match Supabase Auth user id
+  email text UNIQUE NOT NULL,
+  name text,
+  role text NOT NULL DEFAULT 'journalist',
+  created_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS for users table
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Authenticated users can insert users') THEN
+    CREATE POLICY "Authenticated users can insert users" ON public.users FOR INSERT TO authenticated WITH CHECK (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Authenticated users can select users') THEN
+    CREATE POLICY "Authenticated users can select users" ON public.users FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
 
 -- ── Supabase Storage — article image uploads ─────────────────────
 -- Run these in the Supabase SQL Editor AFTER creating the bucket

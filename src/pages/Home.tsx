@@ -85,16 +85,14 @@ export default function Home({ onArticleClick, articles, onCategoryClick, loadin
                 Live Transmission
               </span>
             </div>
-            /*<div className="absolute bottom-0 inset-x-0 p-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none text-white">
+            <div className="absolute bottom-0 inset-x-0 p-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none text-white">
               <span className="text-ashanti-gold text-[11px] font-black uppercase tracking-[0.4em] mb-3 block">
                 
               </span>
               <h1 className="font-heading text-3xl md:text-5xl font-bold mb-4 leading-tight max-w-2xl">
-                Bosomtwi Web Live
+              
               </h1>
-              <p className="text-white/60 text-base max-w-xl line-clamp-2">
-                Real-time coverage of cultural heritage, economic progress, and local narratives from the heart of the Ashanti Region.
-              </p>
+              <p className="text-white/60 text-base max-w-xl line-clamp-2"></p>
             </div>
           </div>
 

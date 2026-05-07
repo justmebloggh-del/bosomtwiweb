@@ -38,9 +38,65 @@ export default function AdminDashboard({ user }: { user: User }) {
     setAuthors(data || []);
   }
   async function fetchAnalytics() {
-    // Example: fetch views, top articles, etc.
-    const { data } = await supabase.rpc('get_article_analytics');
-    setAnalytics(data || {});
+    // Fetch all articles for analytics calculations
+    const { data } = await supabase.from('articles').select('*');
+    if (!data) {
+      setAnalytics({});
+      return;
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Calculate daily stats (last 7 days)
+    const dailyStats: any = {};
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      dailyStats[dateKey] = { views: 0, articles: 0 };
+    }
+
+    data.forEach((article: any) => {
+      const pubDate = new Date(article.published_at);
+      const pubDateKey = pubDate.toISOString().split('T')[0];
+      if (dailyStats[pubDateKey]) {
+        dailyStats[pubDateKey].views += article.views || 0;
+        dailyStats[pubDateKey].articles += 1;
+      }
+    });
+
+    // Weekly stats
+    const weeklyViews = data
+      .filter((a: any) => new Date(a.published_at) >= sevenDaysAgo)
+      .reduce((sum: number, a: any) => sum + (a.views || 0), 0);
+    const weeklyArticles = data.filter((a: any) => new Date(a.published_at) >= sevenDaysAgo).length;
+
+    // Monthly stats
+    const monthlyViews = data
+      .filter((a: any) => new Date(a.published_at) >= thirtyDaysAgo)
+      .reduce((sum: number, a: any) => sum + (a.views || 0), 0);
+    const monthlyArticles = data.filter((a: any) => new Date(a.published_at) >= thirtyDaysAgo).length;
+
+    // Total stats
+    const totalViews = data.reduce((sum: number, a: any) => sum + (a.views || 0), 0);
+    const topArticle = [...data].sort((a: any, b: any) => (b.views || 0) - (a.views || 0))[0];
+
+    setAnalytics({
+      dailyStats,
+      weeklyViews,
+      weeklyArticles,
+      monthlyViews,
+      monthlyArticles,
+      totalViews,
+      totalArticles: data.length,
+      topArticleTitle: topArticle?.title || '-',
+      topArticleViews: topArticle?.views || 0,
+    });
   }
 
   // Add author (admin only)
@@ -132,23 +188,101 @@ export default function AdminDashboard({ user }: { user: User }) {
 
         {tab === 'Analytics' && (
           <div>
-            <h2 className="text-xl font-bold mb-4">Analytics</h2>
-            {analytics ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white rounded-xl p-6 shadow">
-                  <div className="text-3xl font-black text-ashanti-gold">{analytics.total_views ?? 0}</div>
-                  <div className="text-xs uppercase mt-2 font-bold">Total Views</div>
+            <h2 className="text-xl font-bold mb-6">Analytics</h2>
+            {analytics && Object.keys(analytics).length > 0 ? (
+              <div className="space-y-8">
+                {/* Top-level stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-6 shadow border-l-4 border-ashanti-gold">
+                    <div className="text-3xl font-black text-ashanti-gold">{analytics.totalViews || 0}</div>
+                    <div className="text-xs uppercase mt-2 font-bold text-gray-600">Total Views</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-6 shadow border-l-4 border-ashanti-gold">
+                    <div className="text-3xl font-black text-ashanti-gold">{analytics.totalArticles || 0}</div>
+                    <div className="text-xs uppercase mt-2 font-bold text-gray-600">Total Articles</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-6 shadow border-l-4 border-ashanti-gold">
+                    <div className="text-lg font-black text-ashanti-gold truncate">{analytics.topArticleTitle || '-'}</div>
+                    <div className="text-xs uppercase mt-2 font-bold text-gray-600">Top Article</div>
+                    <div className="text-sm text-gray-500 mt-1">{analytics.topArticleViews || 0} views</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-6 shadow border-l-4 border-ashanti-gold">
+                    <div className="text-lg font-black text-ashanti-gold">{analytics.totalArticles > 0 ? Math.round(analytics.totalViews / analytics.totalArticles) : 0}</div>
+                    <div className="text-xs uppercase mt-2 font-bold text-gray-600">Avg Views/Article</div>
+                  </div>
                 </div>
+
+                {/* Daily Report (Last 7 Days) */}
                 <div className="bg-white rounded-xl p-6 shadow">
-                  <div className="text-3xl font-black text-ashanti-gold">{analytics.total_articles ?? 0}</div>
-                  <div className="text-xs uppercase mt-2 font-bold">Total Articles</div>
+                  <h3 className="text-lg font-bold mb-4">Daily Report (Last 7 Days)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="p-3 text-left font-bold">Date</th>
+                          <th className="p-3 text-left font-bold">Articles</th>
+                          <th className="p-3 text-left font-bold">Views</th>
+                          <th className="p-3 text-left font-bold">Avg Views/Article</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.dailyStats && Object.keys(analytics.dailyStats).map((date: string) => {
+                          const stat = analytics.dailyStats[date];
+                          return (
+                            <tr key={date} className="border-b hover:bg-gray-50">
+                              <td className="p-3 font-semibold">{new Date(date).toLocaleDateString()}</td>
+                              <td className="p-3">{stat.articles}</td>
+                              <td className="p-3 text-ashanti-gold font-bold">{stat.views}</td>
+                              <td className="p-3">{stat.articles > 0 ? Math.round(stat.views / stat.articles) : 0}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="bg-white rounded-xl p-6 shadow">
-                  <div className="text-3xl font-black text-ashanti-gold">{analytics.top_article_title ?? '-'}</div>
-                  <div className="text-xs uppercase mt-2 font-bold">Top Article</div>
+
+                {/* Weekly Report */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-xl p-6 shadow">
+                    <h3 className="text-lg font-bold mb-4">Weekly Report (Last 7 Days)</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Total Views</span>
+                        <span className="text-2xl font-black text-ashanti-gold">{analytics.weeklyViews || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Articles Published</span>
+                        <span className="text-2xl font-black text-ashanti-gold">{analytics.weeklyArticles || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Avg Views/Article</span>
+                        <span className="text-2xl font-black text-ashanti-gold">{analytics.weeklyArticles > 0 ? Math.round(analytics.weeklyViews / analytics.weeklyArticles) : 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Monthly Report */}
+                  <div className="bg-white rounded-xl p-6 shadow">
+                    <h3 className="text-lg font-bold mb-4">Monthly Report (Last 30 Days)</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Total Views</span>
+                        <span className="text-2xl font-black text-ashanti-gold">{analytics.monthlyViews || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Articles Published</span>
+                        <span className="text-2xl font-black text-ashanti-gold">{analytics.monthlyArticles || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Avg Views/Article</span>
+                        <span className="text-2xl font-black text-ashanti-gold">{analytics.monthlyArticles > 0 ? Math.round(analytics.monthlyViews / analytics.monthlyArticles) : 0}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ) : <div>Loading analytics…</div>}
+            ) : <div className="text-center py-8 text-gray-500">No analytics data available. Check back after articles are published.</div>}
           </div>
         )}
 
