@@ -32,6 +32,9 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
 
       // If user profile not found, create it
       if (userError || !userData) {
+        // List of admin emails
+        const adminEmails = ['admin@bosomtwi.com'];
+        const isAdmin = adminEmails.includes(authData.user.email);
         const { data: insertData, error: insertError } = await supabase
           .from('users')
           .insert([
@@ -39,7 +42,7 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
               id: authData.user.id,
               email: authData.user.email,
               name: authData.user.user_metadata?.full_name || authData.user.email,
-              role: 'journalist', // Default role, adjust as needed
+              role: isAdmin ? 'admin' : 'journalist',
               created_at: new Date().toISOString(),
             },
           ])
