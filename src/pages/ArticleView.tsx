@@ -323,64 +323,9 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
 
             <AdBanner size="wide" className="my-8" />
 
-            <div className="space-y-7 text-base md:text-[18px]">
+            <div className="space-y-6 text-base md:text-[18px]">
               {article.content
-                ? article.content.split(/\n\n+/).map((para, i, arr) => {
-                    // Check if this block is an image URL
-                    const imageUrlPattern = /^(https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg))$/i;
-                    const isImageUrl = imageUrlPattern.test(para.trim());
-                    
-                    // Check if this block is a video URL
-                    const videoUrlPattern = /^(https?:\/\/.+\.(mp4|webm|mov|avi))$/i;
-                    const youtubePattern = /(youtube\.com|youtu\.be)/i;
-                    const isVideoUrl = videoUrlPattern.test(para.trim()) || youtubePattern.test(para.trim());
-
-                    return (
-                      <span key={i}>
-                        {isImageUrl && (
-                          <figure className="my-8 rounded-xl overflow-hidden shadow-lg">
-                            <img
-                              src={para.trim()}
-                              alt="Article content"
-                              loading="lazy"
-                              className="w-full h-auto object-cover"
-                            />
-                          </figure>
-                        )}
-                        {isVideoUrl && videoUrlPattern.test(para.trim()) && (
-                          <div className="my-8 bg-gray-100 rounded-xl shadow-lg overflow-hidden aspect-video">
-                            <video src={para.trim()} controls className="w-full h-full" />
-                          </div>
-                        )}
-                        {isVideoUrl && youtubePattern.test(para.trim()) && (
-                          <div className="my-8 bg-gray-100 rounded-xl shadow-lg overflow-hidden aspect-video">
-                            <iframe
-                              className="w-full h-full"
-                              src={`https://www.youtube.com/embed/${
-                                para.trim().includes('youtu.be')
-                                  ? para.trim().split('/').pop()?.split('?')[0]
-                                  : new URLSearchParams(new URL(para.trim()).search).get('v')
-                              }?rel=0&modestbranding=1`}
-                              title="Video player"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                              allowFullScreen
-                              style={{ border: 'none' }}
-                            />
-                          </div>
-                        )}
-                        {!isImageUrl && !isVideoUrl && (
-                          <>
-                            <p className="leading-relaxed">{para.trim()}</p>
-                            {i === Math.floor(arr.length / 2) - 1 && arr.length > 2 && (
-                              <div className="py-8 flex justify-center space-x-4">
-                                {[1, 2, 3].map(dot => <div key={dot} className="w-1.5 h-1.5 bg-ashanti-gold rounded-full" />)}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </span>
-                    );
-                  })
+                ? renderBody(article.content)
                 : <p className="text-news-text/40 italic">Full article body not available.</p>
               }
             </div>

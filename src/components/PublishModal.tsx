@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine, Bold, Italic, Type, Image, Play, Trash2 } from 'lucide-react';
+import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine, Bold, Italic, Image, Play } from 'lucide-react';
 import { motion } from 'motion/react';
 import { User, Article } from '../types';
 import { supabase } from '../lib/supabase';
@@ -9,14 +9,6 @@ const ALL_CATEGORIES = [
   'Technology', 'Lifestyle', 'International',
 ];
 
-// Helper functions for content block management
-const parseContentBlocks = (content: string): any[] => {
-  return content.split('\n').map(line => ({ type: 'text', value: line, fontSize: 'base', bold: false, italic: false }));
-};
-
-const serializeContentBlocks = (blocks: any[]): string => {
-  return blocks.map(b => b.value).join('\n');
-};
 
 interface PublishModalProps {
   user: User;
@@ -46,11 +38,7 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
   const [uploadError, setUploadError] = useState('');
   const [status, setStatus]         = useState({ text: '', type: '' });
   const [saving, setSaving]         = useState(false);
-  const [contentBlocks, setContentBlocks] = useState<any[]>(
-    isEdit && editArticle.content 
-      ? parseContentBlocks(editArticle.content)
-      : []
-  );
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
@@ -154,10 +142,10 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
       const ext = file.name.split('.').pop() || 'mp4';
       const path = `body-video-${Date.now()}.${ext}`;
       const { data, error } = await supabase.storage
-        .from('article-videos')
+        .from('article-images')
         .upload(path, file, { cacheControl: '3600', upsert: false });
       if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage.from('article-videos').getPublicUrl(data.path);
+      const { data: { publicUrl } } = supabase.storage.from('article-images').getPublicUrl(data.path);
       set('content', form.content + `\n[video]${publicUrl}[/video]\n`);
     } catch (err: any) {
       setStatus({ text: err.message || 'Upload failed — check storage bucket exists.', type: 'error' });
