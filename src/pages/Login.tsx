@@ -43,7 +43,6 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
           email: authData.user.email,
           name: authData.user.user_metadata?.full_name || authData.user.email || 'User',
           role: isAdmin ? 'admin' : 'journalist',
-          created_at: new Date().toISOString(),
         };
 
         // Try to insert first
