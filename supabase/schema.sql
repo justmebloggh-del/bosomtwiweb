@@ -158,7 +158,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 -- Allow users to insert their own profile
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can insert their own profile') THEN
-    CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
+    CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (id = auth.uid()::uuid);
   END IF;
 END $$;
 
@@ -172,7 +172,7 @@ END $$;
 -- Allow users to update their own profile
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can update their own profile') THEN
-    CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+    CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING (id = auth.uid()::uuid) WITH CHECK (id = auth.uid()::uuid);
   END IF;
 END $$;
 
