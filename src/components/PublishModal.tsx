@@ -460,6 +460,53 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
             <p className="text-[10px] text-slate-500">
               💡 Tips: Use <span className="font-mono bg-slate-100 px-1">**text**</span> for bold, <span className="font-mono bg-slate-100 px-1">_text_</span> for italic, or use the toolbar above.
             </p>
+
+            {/* Embedded media previews */}
+            {(() => {
+              const images = [...(form.content.matchAll(/\[image\](https?:\/\/[^\]]+)\[\/image\]/g))].map(m => m[1]);
+              const videos = [...(form.content.matchAll(/\[video\](https?:\/\/[^\]]+)\[\/video\]/g))].map(m => m[1]);
+              if (images.length === 0 && videos.length === 0) return null;
+              return (
+                <div className="space-y-2 pt-1">
+                  <p className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+                    Embedded media ({images.length + videos.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((src, i) => (
+                      <div key={`pi${i}`} className="relative group">
+                        <img
+                          src={src}
+                          alt=""
+                          className="h-20 w-28 object-cover rounded-lg border border-slate-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => set('content', form.content.replace(`[image]${src}[/image]`, ''))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black hidden group-hover:flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {videos.map((src, i) => (
+                      <div key={`pv${i}`} className="relative group h-20 w-28 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden flex items-center justify-center">
+                        <video src={src} className="h-full w-full object-cover" muted />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Play size={20} className="text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => set('content', form.content.replace(`[video]${src}[/video]`, ''))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black hidden group-hover:flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Save / Publish button */}

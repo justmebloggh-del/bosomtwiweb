@@ -89,32 +89,35 @@ function renderBody(content: string): ReactElement[] {
     const t = lines[i].trim();
 
     // [image]URL[/image]
-    const imgTag = t.match(/^\[image\](https?:\/\/.+?)\[\/image\]$/i);
-    if (imgTag) {
-      flush();
-      out.push(
-        <figure key={`img${n++}`} className="my-8 rounded-xl overflow-hidden shadow-lg">
-          <img src={imgTag[1]} alt="" loading="lazy" className="w-full h-auto object-cover" />
-        </figure>
-      );
-      continue;
+    if (t.startsWith('[image]') && t.endsWith('[/image]')) {
+      const url = t.slice(7, -8);
+      if (url) {
+        flush();
+        out.push(
+          <figure key={`img${n++}`} className="my-8 rounded-xl overflow-hidden shadow-lg">
+            <img src={url} alt="" loading="lazy" className="w-full h-auto object-cover" />
+          </figure>
+        );
+        continue;
+      }
     }
 
     // [video]URL[/video]
-    const vidTag = t.match(/^\[video\](https?:\/\/.+?)\[\/video\]$/i);
-    if (vidTag) {
-      flush();
-      const url = vidTag[1];
-      if (/youtube\.com|youtu\.be/i.test(url)) {
-        out.push(renderYouTubeEmbed(url, `yt${n++}`));
-      } else {
-        out.push(
-          <div key={`vid${n++}`} className="my-8 rounded-xl shadow-lg overflow-hidden aspect-video bg-gray-100">
-            <video src={url} controls className="w-full h-full" />
-          </div>
-        );
+    if (t.startsWith('[video]') && t.endsWith('[/video]')) {
+      const url = t.slice(7, -8);
+      if (url) {
+        flush();
+        if (/youtube\.com|youtu\.be/i.test(url)) {
+          out.push(renderYouTubeEmbed(url, `yt${n++}`));
+        } else {
+          out.push(
+            <div key={`vid${n++}`} className="my-8 rounded-xl shadow-lg overflow-hidden aspect-video bg-gray-100">
+              <video src={url} controls className="w-full h-full" />
+            </div>
+          );
+        }
+        continue;
       }
-      continue;
     }
 
     // Bare image URL
