@@ -1,9 +1,10 @@
 import { Article, User } from '../types';
-import { Share2, Bookmark, MessageSquare, ArrowLeft, Calendar, ArrowUpRight, Facebook, Twitter, Link, Check, PenLine } from 'lucide-react';
+import { Share2, Bookmark, MessageSquare, ArrowLeft, Calendar, ArrowUpRight, Facebook, Twitter, Link, Check, PenLine, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect, FormEvent, ReactNode, ReactElement } from 'react';
 import AdBanner from '../components/AdBanner';
 import PublishModal from '../components/PublishModal';
+import { supabase } from '../lib/supabase';
 
 interface ArticleViewProps {
   article: Article;
@@ -14,9 +15,189 @@ interface ArticleViewProps {
   onArticleUpdated?: () => void;
 }
 
+interface Comment {
+  id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
+}
+
+// ── Content renderer ─────────────────────────────────────────────
+
+function renderInline(text: string): ReactNode {
+  const TOKEN = /(\*\*[^*\n]+\*\*|_[^_\n]+_|\[size:(?:sm|base|lg|xl)\][^\[]+\[\/size\])/g;
+  const parts: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = TOKEN.exec(text)) !== null) {
+    if (m.index > last) parts.push(<span key={k++}>{text.slice(last, m.index)}</span>);
+    const tok = m[0];
+    if (tok.startsWith('**')) {
+      parts.push(<strong key={k++}>{tok.slice(2, -2)}</strong>);
+    } else if (tok.startsWith('_')) {
+      parts.push(<em key={k++}>{tok.slice(1, -1)}</em>);
+    } else {
+      const sm = tok.match(/^\[size:(sm|base|lg|xl)\](.*)\[\/size\]$/s);
+      if (sm) {
+        const cls: Record<string, string> = { sm: 'text-sm', base: 'text-base', lg: 'text-lg', xl: 'text-xl' };
+        parts.push(<span key={k++} className={cls[sm[1]]}>{sm[2]}</span>);
+      } else {
+        parts.push(<span key={k++}>{tok}</span>);
+      }
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(<span key={k++}>{text.slice(last)}</span>);
+  return parts.length ? <>{parts}</> : text;
+}
+
+function renderYouTubeEmbed(url: string, key: string): ReactElement {
+  let vid = '';
+  try {
+    vid = url.includes('youtu.be')
+      ? (url.split('/').pop()?.split('?')[0] ?? '')
+      : (new URLSearchParams(new URL(url).search).get('v') ?? '');
+  } catch { vid = ''; }
+  return (
+    <div key={key} className="my-8 rounded-xl shadow-lg overflow-hidden aspect-video">
+      <iframe
+        className="w-full h-full"
+        src={`https://www.youtube.com/embed/${vid}?rel=0&modestbranding=1`}
+        title="Video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        style={{ border: 'none' }}
+      />
+    </div>
+  );
+}
+
+function renderBody(content: string): ReactElement[] {
+  const lines = content.split('\n');
+  const out: ReactElement[] = [];
+  let buf: string[] = [];
+  let n = 0;
+
+  function flush() {
+    const text = buf.join('\n').trim();
+    if (text) out.push(<p key={`p${n++}`} className="leading-relaxed">{renderInline(text)}</p>);
+    buf = [];
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+
+    // [image]URL[/image]
+    const imgTag = t.match(/^\[image\](https?:\/\/.+?)\[\/image\]$/i);
+    if (imgTag) {
+      flush();
+      out.push(
+        <figure key={`img${n++}`} className="my-8 rounded-xl overflow-hidden shadow-lg">
+          <img src={imgTag[1]} alt="" loading="lazy" className="w-full h-auto object-cover" />
+        </figure>
+      );
+      continue;
+    }
+
+    // [video]URL[/video]
+    const vidTag = t.match(/^\[video\](https?:\/\/.+?)\[\/video\]$/i);
+    if (vidTag) {
+      flush();
+      const url = vidTag[1];
+      if (/youtube\.com|youtu\.be/i.test(url)) {
+        out.push(renderYouTubeEmbed(url, `yt${n++}`));
+      } else {
+        out.push(
+          <div key={`vid${n++}`} className="my-8 rounded-xl shadow-lg overflow-hidden aspect-video bg-gray-100">
+            <video src={url} controls className="w-full h-full" />
+          </div>
+        );
+      }
+      continue;
+    }
+
+    // Bare image URL
+    if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(t)) {
+      flush();
+      out.push(
+        <figure key={`bimg${n++}`} className="my-8 rounded-xl overflow-hidden shadow-lg">
+          <img src={t} alt="" loading="lazy" className="w-full h-auto object-cover" />
+        </figure>
+      );
+      continue;
+    }
+
+    // Bare video URL
+    if (/^https?:\/\/.+\.(mp4|webm|mov|avi)(\?.*)?$/i.test(t)) {
+      flush();
+      out.push(
+        <div key={`bvid${n++}`} className="my-8 rounded-xl shadow-lg overflow-hidden aspect-video bg-gray-100">
+          <video src={t} controls className="w-full h-full" />
+        </div>
+      );
+      continue;
+    }
+
+    // Bare YouTube URL
+    if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/i.test(t)) {
+      flush();
+      out.push(renderYouTubeEmbed(t, `byt${n++}`));
+      continue;
+    }
+
+    // Empty line → paragraph break
+    if (!t) { flush(); continue; }
+
+    buf.push(lines[i]);
+  }
+
+  flush();
+  return out;
+}
+
+// ────────────────────────────────────────────────────────────────
+
 export default function ArticleView({ article, onBack, relatedArticles, onArticleClick, user, onArticleUpdated }: ArticleViewProps) {
   const [copied, setCopied] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentName, setCommentName] = useState(user?.name || '');
+  const [commentBody, setCommentBody] = useState('');
+  const [commenting, setCommenting] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [commentSuccess, setCommentSuccess] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('comments')
+      .select('*')
+      .eq('article_id', article.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => setComments((data as Comment[]) || []));
+  }, [article.id]);
+
+  const handlePostComment = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!commentBody.trim()) return;
+    setCommenting(true);
+    setCommentError('');
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({ article_id: article.id, author_name: commentName.trim() || 'Anonymous', body: commentBody.trim() })
+      .select()
+      .single();
+    setCommenting(false);
+    if (error) {
+      setCommentError('Failed to post comment. Please try again.');
+    } else {
+      setComments(prev => [...prev, data as Comment]);
+      setCommentBody('');
+      setCommentSuccess(true);
+      setTimeout(() => setCommentSuccess(false), 3000);
+    }
+  };
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareText = `Read this on Bosomtwi Web: ${article.title}`;
@@ -242,20 +423,72 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
           <section className="mt-10 md:mt-12 border-t border-brand-secondary/20 pt-12 pb-16 md:pb-20">
             <div className="flex items-center space-x-4 mb-8 md:mb-10">
               <MessageSquare size={22} className="text-ashanti-gold" />
-              <h2 className="text-2xl md:text-3xl font-heading font-bold text-news-text">Reader Comments</h2>
+              <h2 className="text-2xl md:text-3xl font-heading font-bold text-news-text">
+                Reader Comments
+                {comments.length > 0 && (
+                  <span className="ml-3 text-lg font-normal text-news-text/40">({comments.length})</span>
+                )}
+              </h2>
             </div>
-            <div className="flex items-start space-x-4 md:space-x-6">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-brand-surface rounded-full border border-brand-secondary/20 shrink-0" />
-              <div className="flex-grow space-y-4">
+
+            {/* Existing comments */}
+            {comments.length > 0 && (
+              <div className="space-y-6 mb-10">
+                {comments.map((c: Comment) => (
+                  <div key={c.id} className="flex items-start space-x-4">
+                    <div className="w-9 h-9 rounded-full bg-brand-surface border border-brand-secondary/20 flex items-center justify-center text-sm font-bold text-news-text/60 shrink-0">
+                      {c.author_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-grow bg-brand-surface border border-brand-secondary/10 rounded-2xl px-5 py-4">
+                      <div className="flex items-baseline gap-3 mb-2">
+                        <span className="text-sm font-bold text-news-text">{c.author_name}</span>
+                        <span className="text-[11px] text-news-text/30">
+                          {new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <p className="text-[15px] text-news-text/80 leading-relaxed">{c.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Post form */}
+            <form onSubmit={handlePostComment} className="flex items-start space-x-4 md:space-x-6">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-brand-surface rounded-full border border-brand-secondary/20 flex items-center justify-center text-sm font-bold text-news-text/40 shrink-0">
+                {commentName ? commentName.charAt(0).toUpperCase() : '?'}
+              </div>
+              <div className="flex-grow space-y-3">
+                <input
+                  type="text"
+                  value={commentName}
+                  onChange={e => setCommentName(e.target.value)}
+                  placeholder="Your name (optional)"
+                  className="w-full bg-brand-surface border border-brand-secondary/20 rounded-xl px-4 py-3 text-sm font-sans text-news-text focus:outline-none focus:border-ashanti-gold transition-all placeholder:text-news-text/30"
+                />
                 <textarea
+                  value={commentBody}
+                  onChange={e => setCommentBody(e.target.value)}
                   placeholder="Contribute to the discussion..."
+                  required
                   className="w-full bg-brand-surface border border-brand-secondary/20 rounded-2xl p-4 md:p-6 text-[15px] md:text-[16px] font-sans text-news-text focus:outline-none focus:border-ashanti-gold transition-all min-h-[120px] md:min-h-[150px] placeholder:text-news-text/30 shadow-inner resize-none"
                 />
-                <button className="px-8 md:px-10 py-3 md:py-4 bg-ashanti-gold text-black rounded-xl font-bold uppercase tracking-widest hover:bg-black hover:text-ashanti-gold transition-all shadow-lg text-sm">
-                  Post Comment
+                {commentError && (
+                  <p className="text-sm text-red-500 font-semibold">{commentError}</p>
+                )}
+                {commentSuccess && (
+                  <p className="text-sm text-green-600 font-semibold">Comment posted!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={commenting || !commentBody.trim()}
+                  className="px-8 md:px-10 py-3 md:py-4 bg-ashanti-gold text-black rounded-xl font-bold uppercase tracking-widest hover:bg-black hover:text-ashanti-gold transition-all shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {commenting && <Loader2 size={15} className="animate-spin" />}
+                  {commenting ? 'Posting…' : 'Post Comment'}
                 </button>
               </div>
-            </div>
+            </form>
           </section>
 
           {/* Disclaimer Section */}

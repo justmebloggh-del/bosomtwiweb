@@ -176,6 +176,29 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ── Comments table ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.comments (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  article_id  text NOT NULL REFERENCES public.articles(id) ON DELETE CASCADE,
+  author_name text NOT NULL DEFAULT 'Anonymous',
+  body        text NOT NULL,
+  created_at  timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='comments' AND policyname='Public can read comments') THEN
+    CREATE POLICY "Public can read comments" ON public.comments FOR SELECT USING (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='comments' AND policyname='Public can post comments') THEN
+    CREATE POLICY "Public can post comments" ON public.comments FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
+
 -- ── Supabase Storage — article image uploads ─────────────────────
 -- Run these in the Supabase SQL Editor AFTER creating the bucket
 -- via Dashboard → Storage → New bucket (name: article-images, Public: ON)
