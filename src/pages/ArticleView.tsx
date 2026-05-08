@@ -186,16 +186,23 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
     if (!commentBody.trim()) return;
     setCommenting(true);
     setCommentError('');
-    const { data, error } = await supabase
+    const name = commentName.trim() || 'Anonymous';
+    const body = commentBody.trim();
+    const { error } = await supabase
       .from('comments')
-      .insert({ article_id: article.id, author_name: commentName.trim() || 'Anonymous', body: commentBody.trim() })
-      .select()
-      .single();
+      .insert({ article_id: article.id, author_name: name, body });
     setCommenting(false);
     if (error) {
-      setCommentError('Failed to post comment. Please try again.');
+      console.error('[Comments] insert error:', error);
+      setCommentError(error.message || 'Failed to post comment. Please try again.');
     } else {
-      setComments(prev => [...prev, data as Comment]);
+      const optimistic: Comment = {
+        id: Date.now().toString(),
+        author_name: name,
+        body,
+        created_at: new Date().toISOString(),
+      };
+      setComments(prev => [...prev, optimistic]);
       setCommentBody('');
       setCommentSuccess(true);
       setTimeout(() => setCommentSuccess(false), 3000);
