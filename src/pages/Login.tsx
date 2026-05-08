@@ -34,22 +34,64 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
       if (userError || !userData) {
         // List of admin emails
         const adminEmails = ['admin@bosomtwi.com'];
-        const isAdmin = adminEmails.includes(authData.user.email);
-        const { data: insertData, error: insertError } = await supabase
+        const isAdmin = adminEmails.includes(authData.user.email || '');
+        
+        // Disable RLS temporarily for user creation (using service role would be ideal)
+        // For now, use upsert with user's own credentials
+        const userProfile = {
+          id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.user_metadata?.full_name || authData.user.email || 'User',
+          role: isAdmin ? 'admin' : 'journalist',
+          created_at: new Date().toISOString(),
+        };
+
+        // Try to insert first
+        let { data: insertData, error: insertError } = await supabase
           .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              email: authData.user.email,
-              name: authData.user.user_metadata?.full_name || authData.user.email,
-              role: isAdmin ? 'admin' : 'journalist',
-              created_at: new Date().toISOString(),
-            },
-          ])
+          .insert([userProfile])
           .select()
           .single();
-        if (insertError) throw new Error('Failed to create user profile. Please contact admin.');
-        userData = insertData;
+
+        if (insertError) {
+          // If insert failed, try to fetch existing user by email
+          const { data: existingUser, error: fetchError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', authData.user.email)
+            .single();
+
+          if (existingUser) {
+            // User exists, use it and update role if needed
+            if (isAdmin && existingUser.role !== 'admin') {
+              const { error: updateError } = await supabase
+                .from('users')
+                .update({ role: 'admin' })
+                .eq('id', existingUser.id);
+              if (!updateError) {
+                existingUser.role = 'admin';
+              }
+            }
+            userData = existingUser;
+          } else if (fetchError) {
+            // User doesn't exist and insert failed - try to fetch by id one more time
+            const { data: userById } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', authData.user.id)
+              .single();
+            
+            if (userById) {
+              userData = userById;
+            } else {
+              throw new Error(`Failed to create user profile: ${insertError?.message || 'Unknown error'}`);
+            }
+          } else {
+            throw new Error('Failed to create user profile. Please contact admin.');
+          }
+        } else {
+          userData = insertData;
+        }
       }
 
       // Check if user has journalist or admin access

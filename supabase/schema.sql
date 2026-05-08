@@ -145,7 +145,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ── Users table ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY, -- must match Supabase Auth user id
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email text UNIQUE NOT NULL,
   name text,
   role text NOT NULL DEFAULT 'journalist',
@@ -155,15 +155,24 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Enable RLS for users table
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
+-- Allow users to insert their own profile
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Authenticated users can insert users') THEN
-    CREATE POLICY "Authenticated users can insert users" ON public.users FOR INSERT TO authenticated WITH CHECK (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can insert their own profile') THEN
+    CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
   END IF;
 END $$;
 
+-- Allow authenticated users to select all users
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Authenticated users can select users') THEN
     CREATE POLICY "Authenticated users can select users" ON public.users FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
+
+-- Allow users to update their own profile
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can update their own profile') THEN
+    CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
   END IF;
 END $$;
 
