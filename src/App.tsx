@@ -57,6 +57,14 @@ export default function App() {
   useEffect(() => { loadArticles(); }, []);
 
   useEffect(() => {
+    // Count one visit per browser session
+    if (!sessionStorage.getItem('bw_visited')) {
+      sessionStorage.setItem('bw_visited', '1');
+      supabase.rpc('increment_site_visits').then(() => {}, () => {});
+    }
+  }, []);
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) setUser(sessionToUser(session.user));
     });

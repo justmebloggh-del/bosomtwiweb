@@ -176,6 +176,41 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ── Site visits (one row per day) ────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.site_visits (
+  visit_date date    PRIMARY KEY DEFAULT CURRENT_DATE,
+  count      bigint  NOT NULL DEFAULT 0
+);
+
+ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='site_visits' AND policyname='Public can read site visits') THEN
+    CREATE POLICY "Public can read site visits" ON public.site_visits FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- Atomically increment today's visit count (upsert so the first hit of the day creates the row)
+CREATE OR REPLACE FUNCTION public.increment_site_visits()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  INSERT INTO public.site_visits (visit_date, count)
+  VALUES (CURRENT_DATE, 1)
+  ON CONFLICT (visit_date)
+  DO UPDATE SET count = site_visits.count + 1;
+$$;
+
+-- Atomically increment an article's view count
+CREATE OR REPLACE FUNCTION public.increment_article_views(p_article_id text)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  UPDATE public.articles SET views = COALESCE(views, 0) + 1 WHERE id = p_article_id;
+$$;
+
 -- ── Comments table ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.comments (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),

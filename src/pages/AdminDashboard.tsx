@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PublishModal from '../components/PublishModal';
 import { supabase } from '../lib/supabase';
 import { User, Article } from '../types';
 import {
-  Eye, FileText, TrendingUp, Calendar, Edit2, Trash2, Info,
+  Eye, FileText, TrendingUp, Calendar, Edit2, Trash2, Info, Globe, Users2,
 } from 'lucide-react';
 
 const TABS = ['Articles', 'Analytics', 'Authors', 'Settings'] as const;
@@ -17,11 +17,14 @@ interface AnalyticsData {
   topArticleViews: number;
   categoryBreakdown: Record<string, { articles: number; views: number }>;
   topArticles: any[];
-  dailyStats: Record<string, { views: number; articles: number }>;
+  dailyStats: Record<string, { views: number; articles: number; visits: number }>;
   weeklyViews: number;
   weeklyArticles: number;
   monthlyViews: number;
   monthlyArticles: number;
+  totalVisits: number;
+  todayVisits: number;
+  weeklyVisits: number;
 }
 
 export default function AdminDashboard({ user }: { user: User }) {
@@ -65,24 +68,27 @@ export default function AdminDashboard({ user }: { user: User }) {
   }
 
   async function fetchAnalytics() {
-    const { data } = await supabase.from('articles').select('*');
+    const [{ data }, { data: visitRows }] = await Promise.all([
+      supabase.from('articles').select('*'),
+      supabase.from('site_visits').select('*').order('visit_date', { ascending: false }).limit(30),
+    ]);
     if (!data) { setAnalytics(null); return; }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 7);
     const thirtyDaysAgo = new Date(today); thirtyDaysAgo.setDate(today.getDate() - 30);
+    const todayKey = today.toISOString().split('T')[0];
 
-    // Daily stats for last 7 days
-    const dailyStats: Record<string, { views: number; articles: number }> = {};
+    // Daily slots for last 7 days
+    const dailyStats: Record<string, { views: number; articles: number; visits: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today); d.setDate(d.getDate() - i);
-      dailyStats[d.toISOString().split('T')[0]] = { views: 0, articles: 0 };
+      dailyStats[d.toISOString().split('T')[0]] = { views: 0, articles: 0, visits: 0 };
     }
 
-    // Category breakdown
+    // Merge article data into daily slots
     const categoryBreakdown: Record<string, { articles: number; views: number }> = {};
-
     data.forEach((a: any) => {
       const pubKey = new Date(a.published_at).toISOString().split('T')[0];
       if (dailyStats[pubKey]) {
@@ -94,6 +100,18 @@ export default function AdminDashboard({ user }: { user: User }) {
       categoryBreakdown[cat].articles += 1;
       categoryBreakdown[cat].views += a.views || 0;
     });
+
+    // Merge visit data into daily slots
+    const visits = (visitRows || []) as { visit_date: string; count: number }[];
+    visits.forEach(v => {
+      if (dailyStats[v.visit_date]) dailyStats[v.visit_date].visits = Number(v.count);
+    });
+
+    const totalVisits = visits.reduce((s, v) => s + Number(v.count), 0);
+    const todayVisits = visits.find(v => v.visit_date === todayKey)?.count ?? 0;
+    const weeklyVisits = visits
+      .filter(v => new Date(v.visit_date) >= sevenDaysAgo)
+      .reduce((s, v) => s + Number(v.count), 0);
 
     const totalViews = data.reduce((s: number, a: any) => s + (a.views || 0), 0);
     const sorted = [...data].sort((a: any, b: any) => (b.views || 0) - (a.views || 0));
@@ -114,6 +132,9 @@ export default function AdminDashboard({ user }: { user: User }) {
       weeklyArticles: weekly.length,
       monthlyViews: monthly.reduce((s: number, a: any) => s + (a.views || 0), 0),
       monthlyArticles: monthly.length,
+      totalVisits,
+      todayVisits: Number(todayVisits),
+      weeklyVisits,
     });
   }
 
@@ -289,7 +310,7 @@ export default function AdminDashboard({ user }: { user: User }) {
               <div className="text-center py-16 text-gray-400 text-sm">Loading analytics…</div>
             ) : (
               <>
-                {/* Stat cards */}
+                {/* Content stat cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: 'Total Views', value: analytics.totalViews.toLocaleString(), icon: Eye },
@@ -303,6 +324,24 @@ export default function AdminDashboard({ user }: { user: User }) {
                         <Icon size={13} className="text-ashanti-gold" />
                       </div>
                       <div className="text-2xl font-black text-gray-800">{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Site visit cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { label: 'Total Site Visits', value: analytics.totalVisits.toLocaleString(), icon: Globe, sub: 'all time' },
+                    { label: "Today's Visits", value: analytics.todayVisits.toLocaleString(), icon: Users2, sub: 'today' },
+                    { label: 'Weekly Visits', value: analytics.weeklyVisits.toLocaleString(), icon: TrendingUp, sub: 'last 7 days' },
+                  ].map(({ label, value, icon: Icon, sub }) => (
+                    <div key={label} className="bg-ashanti-gold/5 border border-ashanti-gold/20 rounded-2xl p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{label}</span>
+                        <Icon size={13} className="text-ashanti-gold" />
+                      </div>
+                      <div className="text-2xl font-black text-gray-800">{value}</div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">{sub}</div>
                     </div>
                   ))}
                 </div>
@@ -403,7 +442,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                     <table className="min-w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100">
-                          {['Date', 'Articles Published', 'Views', 'Avg Views'].map(h => (
+                          {['Date', 'Articles Published', 'Views', 'Site Visits', 'Avg Views'].map(h => (
                             <th key={h} className="py-2 pr-6 text-left text-[11px] uppercase tracking-widest text-gray-400 font-bold">
                               {h}
                             </th>
@@ -411,7 +450,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {(Object.entries(analytics.dailyStats) as Array<[string, { views: number; articles: number }]>).map(([date, stat]) => (
+                        {(Object.entries(analytics.dailyStats) as Array<[string, { views: number; articles: number; visits: number }]>).map(([date, stat]) => (
                           <tr key={date} className="border-b border-gray-50 hover:bg-gray-50">
                             <td className="py-2.5 pr-6 font-semibold text-sm">
                               {new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {
@@ -420,6 +459,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                             </td>
                             <td className="py-2.5 pr-6">{stat.articles}</td>
                             <td className="py-2.5 pr-6 font-bold text-ashanti-gold">{stat.views}</td>
+                            <td className="py-2.5 pr-6 font-bold text-blue-500">{stat.visits}</td>
                             <td className="py-2.5 text-gray-400">
                               {stat.articles > 0 ? Math.round(stat.views / stat.articles) : '—'}
                             </td>

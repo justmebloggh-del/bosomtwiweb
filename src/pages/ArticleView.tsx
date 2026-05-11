@@ -173,6 +173,13 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
   const [commentSuccess, setCommentSuccess] = useState(false);
 
   useEffect(() => {
+    // Count this view once per session per article
+    const key = `viewed_${article.id}`;
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1');
+      supabase.rpc('increment_article_views', { p_article_id: article.id }).then(() => {}, () => {});
+    }
+    // Load comments
     supabase
       .from('comments')
       .select('*')
