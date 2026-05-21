@@ -5,6 +5,9 @@ import { User, Article } from '../types';
 import {
   Eye, FileText, TrendingUp, Calendar, Edit2, Trash2, Info, Globe, Users2,
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from 'recharts';
 
 const TABS = ['Articles', 'Analytics', 'Authors', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
@@ -25,6 +28,8 @@ interface AnalyticsData {
   totalVisits: number;
   todayVisits: number;
   weeklyVisits: number;
+  monthlyVisits: number;
+  visitChartData: { date: string; visits: number }[];
 }
 
 export default function AdminDashboard({ user }: { user: User }) {
@@ -70,7 +75,8 @@ export default function AdminDashboard({ user }: { user: User }) {
   async function fetchAnalytics() {
     const [{ data }, { data: visitRows }] = await Promise.all([
       supabase.from('articles').select('*'),
-      supabase.from('site_visits').select('*').order('visit_date', { ascending: false }).limit(30),
+      // No limit — fetch all rows so totalVisits is truly all-time
+      supabase.from('site_visits').select('*').order('visit_date', { ascending: false }),
     ]);
     if (!data) { setAnalytics(null); return; }
 
@@ -78,6 +84,7 @@ export default function AdminDashboard({ user }: { user: User }) {
     today.setHours(0, 0, 0, 0);
     const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 7);
     const thirtyDaysAgo = new Date(today); thirtyDaysAgo.setDate(today.getDate() - 30);
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const todayKey = today.toISOString().split('T')[0];
 
     // Daily slots for last 7 days
@@ -101,17 +108,33 @@ export default function AdminDashboard({ user }: { user: User }) {
       categoryBreakdown[cat].views += a.views || 0;
     });
 
+    const visits = (visitRows || []) as { visit_date: string; visit_count: number }[];
+
     // Merge visit data into daily slots
-    const visits = (visitRows || []) as { visit_date: string; count: number }[];
     visits.forEach(v => {
-      if (dailyStats[v.visit_date]) dailyStats[v.visit_date].visits = Number(v.count);
+      if (dailyStats[v.visit_date]) dailyStats[v.visit_date].visits = Number(v.visit_count);
     });
 
-    const totalVisits = visits.reduce((s, v) => s + Number(v.count), 0);
-    const todayVisits = visits.find(v => v.visit_date === todayKey)?.count ?? 0;
+    // Aggregate totals across ALL rows (not capped at 30)
+    const totalVisits = visits.reduce((s, v) => s + Number(v.visit_count), 0);
+    const todayVisits = visits.find(v => v.visit_date === todayKey)?.visit_count ?? 0;
     const weeklyVisits = visits
-      .filter(v => new Date(v.visit_date) >= sevenDaysAgo)
-      .reduce((s, v) => s + Number(v.count), 0);
+      .filter(v => new Date(v.visit_date + 'T12:00:00') >= sevenDaysAgo)
+      .reduce((s, v) => s + Number(v.visit_count), 0);
+    const monthlyVisits = visits
+      .filter(v => new Date(v.visit_date + 'T12:00:00') >= firstOfMonth)
+      .reduce((s, v) => s + Number(v.visit_count), 0);
+
+    // 30-day chart data (oldest → newest for left-to-right display)
+    const visitChartData = visits
+      .slice(0, 30)
+      .reverse()
+      .map(v => ({
+        date: new Date(v.visit_date + 'T12:00:00').toLocaleDateString('en-GB', {
+          day: 'numeric', month: 'short',
+        }),
+        visits: Number(v.visit_count),
+      }));
 
     const totalViews = data.reduce((s: number, a: any) => s + (a.views || 0), 0);
     const sorted = [...data].sort((a: any, b: any) => (b.views || 0) - (a.views || 0));
@@ -135,6 +158,8 @@ export default function AdminDashboard({ user }: { user: User }) {
       totalVisits,
       todayVisits: Number(todayVisits),
       weeklyVisits,
+      monthlyVisits,
+      visitChartData,
     });
   }
 
@@ -329,11 +354,12 @@ export default function AdminDashboard({ user }: { user: User }) {
                 </div>
 
                 {/* Site visit cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total Site Visits', value: analytics.totalVisits.toLocaleString(), icon: Globe, sub: 'all time' },
-                    { label: "Today's Visits", value: analytics.todayVisits.toLocaleString(), icon: Users2, sub: 'today' },
-                    { label: 'Weekly Visits', value: analytics.weeklyVisits.toLocaleString(), icon: TrendingUp, sub: 'last 7 days' },
+                    { label: 'Total Visitors', value: analytics.totalVisits.toLocaleString(), icon: Globe, sub: 'all time' },
+                    { label: "Today's Visitors", value: analytics.todayVisits.toLocaleString(), icon: Users2, sub: 'today' },
+                    { label: 'This Week', value: analytics.weeklyVisits.toLocaleString(), icon: TrendingUp, sub: 'last 7 days' },
+                    { label: 'This Month', value: analytics.monthlyVisits.toLocaleString(), icon: Calendar, sub: 'current month' },
                   ].map(({ label, value, icon: Icon, sub }) => (
                     <div key={label} className="bg-ashanti-gold/5 border border-ashanti-gold/20 rounded-2xl p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
@@ -345,6 +371,39 @@ export default function AdminDashboard({ user }: { user: User }) {
                     </div>
                   ))}
                 </div>
+
+                {/* Visitor trend chart */}
+                {analytics.visitChartData.length > 0 && (
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-5">
+                      Visitor Trend — Last 30 Days
+                    </h3>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={analytics.visitChartData} barSize={10} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          tickLine={false}
+                          axisLine={false}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          tickLine={false}
+                          axisLine={false}
+                          allowDecimals={false}
+                        />
+                        <Tooltip
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                          cursor={{ fill: '#fef9ec' }}
+                          formatter={(v: number) => [v.toLocaleString(), 'Visitors']}
+                        />
+                        <Bar dataKey="visits" fill="#D4A017" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
 
                 {/* Category breakdown */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

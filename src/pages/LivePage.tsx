@@ -29,7 +29,7 @@ export default function LivePage({ articles, onArticleClick }: LivePageProps) {
                 <iframe
                   width="560"
                   height="315"
-                  src="https://www.youtube.com/embed/9wXOeSzG0a0?si=RKYB_bYQD4L7l2FY"
+                  src="https://www.youtube.com/embed/ArF_tiH8A5s"
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

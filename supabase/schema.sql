@@ -178,9 +178,22 @@ END $$;
 
 -- ── Site visits (one row per day) ────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.site_visits (
-  visit_date date    PRIMARY KEY DEFAULT CURRENT_DATE,
-  count      bigint  NOT NULL DEFAULT 0
+  visit_date  date   PRIMARY KEY DEFAULT CURRENT_DATE,
+  visit_count bigint NOT NULL DEFAULT 0
 );
+
+-- Rename legacy column if the table was created with the reserved word "count"
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'site_visits' AND column_name = 'count'
+  ) THEN
+    ALTER TABLE public.site_visits RENAME COLUMN count TO visit_count;
+  END IF;
+END $$;
+
+-- Add visit_count if the table existed but had neither column
+ALTER TABLE public.site_visits ADD COLUMN IF NOT EXISTS visit_count bigint NOT NULL DEFAULT 0;
 
 ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
 
@@ -196,10 +209,10 @@ RETURNS void
 LANGUAGE sql
 SECURITY DEFINER
 AS $$
-  INSERT INTO public.site_visits (visit_date, count)
+  INSERT INTO public.site_visits (visit_date, visit_count)
   VALUES (CURRENT_DATE, 1)
   ON CONFLICT (visit_date)
-  DO UPDATE SET count = site_visits.count + 1;
+  DO UPDATE SET visit_count = site_visits.visit_count + 1;
 $$;
 
 -- Atomically increment an article's view count
@@ -233,6 +246,12 @@ DO $$ BEGIN
     CREATE POLICY "Public can post comments" ON public.comments FOR INSERT WITH CHECK (true);
   END IF;
 END $$;
+
+-- ── Ensure anonymous visitors can call tracking functions ───────
+-- SECURITY DEFINER lets these run as the owner (bypassing RLS),
+-- but the anon role still needs EXECUTE permission to invoke them.
+GRANT EXECUTE ON FUNCTION public.increment_site_visits() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_article_views(text) TO anon, authenticated;
 
 -- ── Supabase Storage — article image uploads ─────────────────────
 -- Run these in the Supabase SQL Editor AFTER creating the bucket
