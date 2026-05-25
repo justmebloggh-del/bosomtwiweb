@@ -5,8 +5,9 @@ import { User, Article } from '../types';
 import { supabase } from '../lib/supabase';
 
 const ALL_CATEGORIES = [
-  'Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment',
-  'Technology', 'Lifestyle', 'International',
+  'Manhyia', 'News', 'Politics', 'Business', 'Education',
+  'Sports', 'Entertainment', 'Lifestyle', 'Technology',
+  'International', 'Health', 'Local', 'Editorials',
 ];
 
 

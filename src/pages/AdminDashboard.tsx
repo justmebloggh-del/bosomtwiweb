@@ -13,6 +13,12 @@ import {
 const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
 
+const ALL_CATEGORIES = [
+  'All', 'Manhyia', 'News', 'Politics', 'Business', 'Education',
+  'Sports', 'Entertainment', 'Lifestyle', 'Technology',
+  'International', 'Health', 'Local', 'Editorials',
+];
+
 interface AnalyticsData {
   totalViews: number;
   totalArticles: number;
@@ -43,6 +49,7 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [showPublish, setShowPublish] = useState(false);
   const [editArticle, setEditArticle] = useState<Article | null>(null);
   const [deletingArticleId, setDeletingArticleId] = useState<string | null>(null);
+  const [articleCatFilter, setArticleCatFilter] = useState('All');
 
   // Settings — author management
   const [editingAuthor, setEditingAuthor] = useState<any | null>(null);
@@ -310,7 +317,7 @@ export default function AdminDashboard({ user }: { user: User }) {
         {/* ── Articles ───────────────────────────────────────── */}
         {tab === 'Articles' && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">
                 All Articles{' '}
                 <span className="text-news-muted font-normal text-sm">({articles.length})</span>
@@ -322,6 +329,21 @@ export default function AdminDashboard({ user }: { user: User }) {
                 + New Article
               </button>
             </div>
+
+            {/* Category filter pills */}
+            <div className="flex gap-1.5 flex-wrap mb-5">
+              {ALL_CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => setArticleCatFilter(cat)}
+                  className={`text-[9px] uppercase tracking-widest font-black px-3 py-1.5 rounded-full transition-all ${
+                    articleCatFilter === cat
+                      ? 'bg-ashanti-gold text-black shadow'
+                      : 'bg-brand-surface text-news-muted border border-news-border hover:border-ashanti-gold hover:text-ashanti-gold'
+                  }`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+
             <div className="bg-news-card rounded-2xl overflow-hidden shadow-sm border border-news-border">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
@@ -338,7 +360,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {articles.map(article => (
+                    {articles.filter(a => articleCatFilter === 'All' || a.category === articleCatFilter).map(article => (
                       <tr key={article.id} className="border-b border-news-border hover:bg-brand-surface transition-colors">
                         <td className="px-4 py-3 font-semibold max-w-[240px] truncate">{article.title}</td>
                         <td className="px-4 py-3">
