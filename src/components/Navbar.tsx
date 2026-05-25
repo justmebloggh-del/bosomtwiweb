@@ -83,8 +83,10 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [newsOpen, setNewsOpen] = useState(false);
+  const [newsLeft, setNewsLeft] = useState(0);
   const [navBottom, setNavBottom] = useState(134);
   const navRef = useRef<HTMLElement>(null);
+  const newsBtnRef = useRef<HTMLButtonElement>(null);
   const dt = useDateTime();
 
   useEffect(() => {
@@ -183,7 +185,11 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
             {/* News dropdown */}
             <div className="relative h-full flex items-center">
               <button
-                onClick={() => setNewsOpen(v => !v)}
+                ref={newsBtnRef}
+                onClick={() => {
+                  if (newsBtnRef.current) setNewsLeft(newsBtnRef.current.getBoundingClientRect().left);
+                  setNewsOpen(v => !v);
+                }}
                 className={`flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] font-bold px-2.5 h-full border-b-2 transition-all ${newsOpen ? 'text-ashanti-gold border-ashanti-gold' : 'text-news-text/55 border-transparent hover:text-ashanti-gold hover:border-ashanti-gold'}`}
               >
                 News <ChevronDown size={11} className={`transition-transform duration-200 ${newsOpen ? 'rotate-180' : ''}`} />
@@ -192,18 +198,19 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
                 {newsOpen && (
                   <>
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      onClick={() => setNewsOpen(false)} className="fixed inset-0 z-[49] bg-black/10" />
+                      onClick={() => setNewsOpen(false)} className="fixed inset-0 z-[49]" />
                     <motion.div
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-                      transition={{ duration: 0.18 }}
-                      className="absolute left-0 top-full z-50 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-news-border overflow-hidden"
+                      initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      className="fixed z-50 w-52 bg-white rounded-2xl shadow-2xl border border-news-border overflow-hidden"
+                      style={{ top: navBottom, left: newsLeft }}
                     >
                       {[
-                        { label: 'Latest News', cat: '', desc: 'All latest stories' },
-                        { label: 'Manhyia',     cat: 'Manhyia',     desc: 'Palace & kingdom news' },
-                        { label: 'Local',        cat: 'Local',        desc: 'Community stories' },
-                        { label: 'News',         cat: 'News',         desc: 'General news' },
-                        { label: 'International',cat: 'International',desc: 'World news' },
+                        { label: 'Latest News',  cat: '',              desc: 'All latest stories' },
+                        { label: 'Manhyia',      cat: 'Manhyia',       desc: 'Palace & kingdom news' },
+                        { label: 'Local',        cat: 'Local',         desc: 'Community stories' },
+                        { label: 'News',         cat: 'News',          desc: 'General news' },
+                        { label: 'International',cat: 'International', desc: 'World news' },
                       ].map(({ label, cat, desc }) => (
                         <button key={label} onClick={() => { onCategoryClick(cat); setNewsOpen(false); }}
                           className="w-full text-left px-4 py-3 hover:bg-ashanti-gold/5 border-b border-news-border last:border-0 group transition-colors">
