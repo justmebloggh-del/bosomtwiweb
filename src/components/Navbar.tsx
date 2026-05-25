@@ -209,7 +209,6 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
                         { label: 'Latest News',  cat: '',              desc: 'All latest stories' },
                         { label: 'Manhyia',      cat: 'Manhyia',       desc: 'Palace & kingdom news' },
                         { label: 'Local',        cat: 'Local',         desc: 'Community stories' },
-                        { label: 'News',         cat: 'News',          desc: 'General news' },
                         { label: 'International',cat: 'International', desc: 'World news' },
                       ].map(({ label, cat, desc }) => (
                         <button key={label} onClick={() => { onCategoryClick(cat); setNewsOpen(false); }}
