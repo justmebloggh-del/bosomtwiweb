@@ -351,8 +351,27 @@ function BreakingTicker({ articles, onArticleClick }: { articles: Article[]; onA
 
 const FILTER_TABS = ['All', 'Manhyia', 'Politics', 'Business', 'Sports', 'Technology', 'Entertainment', 'Health', 'Local', 'International'];
 
+const DEFAULT_TV_EMBED = 'https://www.youtube.com/embed/ArF_tiH8A5s';
+function toEmbedUrl(url: string): string {
+  if (!url) return DEFAULT_TV_EMBED;
+  if (url.includes('/embed/')) return url;
+  const watchMatch = url.match(/[?&]v=([^&#]+)/);
+  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}?rel=0`;
+  const shortMatch = url.match(/youtu\.be\/([^?#]+)/);
+  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}?rel=0`;
+  return url;
+}
+
 export default function Home({ onArticleClick, articles, onCategoryClick, onNavigate, loading }: HomeProps) {
   const [activeFilter, setActiveFilter] = useState('All');
+  const [bosomtwiTvEmbed, setBosomtwiTvEmbed] = useState(DEFAULT_TV_EMBED);
+
+  useEffect(() => {
+    try {
+      const tv = localStorage.getItem('bw_tv');
+      if (tv) { const { bosomtwi } = JSON.parse(tv); if (bosomtwi) setBosomtwiTvEmbed(toEmbedUrl(bosomtwi)); }
+    } catch { /* */ }
+  }, []);
 
   if (loading) {
     return (
@@ -422,7 +441,7 @@ export default function Home({ onArticleClick, articles, onCategoryClick, onNavi
             </div>
             <div className="relative rounded-2xl overflow-hidden aspect-video bg-black shadow-2xl shadow-black/20">
               <iframe width="100%" height="100%"
-                src="https://www.youtube.com/embed/ArF_tiH8A5s"
+                src={bosomtwiTvEmbed}
                 title="Bosomtwi Web Live" style={{ border: 'none' }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen className="scale-105 hover:scale-100 transition-transform duration-[2000ms]" />

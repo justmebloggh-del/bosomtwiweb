@@ -1,6 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Article } from '../types';
 import { motion } from 'motion/react';
 import { Radio, Clock, ArrowRight, Volume2 } from 'lucide-react';
+
+const DEFAULT_STREAM = 'https://www.youtube.com/embed/ArF_tiH8A5s';
+
+function toEmbedUrl(url: string): string {
+  if (!url) return DEFAULT_STREAM;
+  if (url.includes('/embed/')) return url;
+  const watchMatch = url.match(/[?&]v=([^&#]+)/);
+  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}?autoplay=1&rel=0`;
+  const shortMatch = url.match(/youtu\.be\/([^?#]+)/);
+  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}?autoplay=1&rel=0`;
+  return url;
+}
 
 interface LivePageProps {
   articles: Article[];
@@ -10,6 +23,14 @@ interface LivePageProps {
 export default function LivePage({ articles, onArticleClick }: LivePageProps) {
   const latest = articles.slice(0, 8);
   const streamAvailable = false; // Set to false to show the message
+  const [streamUrl, setStreamUrl] = useState(DEFAULT_STREAM);
+
+  useEffect(() => {
+    try {
+      const tv = localStorage.getItem('bw_tv');
+      if (tv) { const { live } = JSON.parse(tv); if (live) setStreamUrl(toEmbedUrl(live)); }
+    } catch { /* */ }
+  }, []);
 
   return (
     <div className="bg-black min-h-screen text-white">
@@ -29,7 +50,7 @@ export default function LivePage({ articles, onArticleClick }: LivePageProps) {
                 <iframe
                   width="560"
                   height="315"
-                  src="https://www.youtube.com/embed/ArF_tiH8A5s"
+                  src={streamUrl}
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
