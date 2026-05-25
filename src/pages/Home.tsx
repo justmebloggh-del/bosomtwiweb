@@ -258,13 +258,35 @@ function HeroSlider({ articles, onArticleClick }: { articles: Article[]; onArtic
 
 function BreakingTicker({ articles, onArticleClick }: { articles: Article[]; onArticleClick: (a: Article) => void }) {
   const [index, setIndex] = useState(0);
+  const [manualText, setManualText] = useState('');
 
   useEffect(() => {
-    const t = setInterval(() => setIndex(i => (i + 1) % articles.length), 5000);
-    return () => clearInterval(t);
-  }, [articles.length]);
+    try {
+      const saved = localStorage.getItem('bw_breaking');
+      if (saved) {
+        const { text, active } = JSON.parse(saved);
+        if (active && text) setManualText(text.trim());
+      }
+    } catch { /* */ }
+  }, []);
 
-  const current = articles[index];
+  type TickerItem = { id: string; title: string; isManual?: boolean };
+  const items: TickerItem[] = [
+    ...(manualText ? [{ id: '__manual__', title: manualText, isManual: true as const }] : []),
+    ...articles,
+  ];
+  const total = items.length;
+
+  useEffect(() => {
+    if (total === 0) return;
+    const t = setInterval(() => setIndex(i => (i + 1) % total), 5000);
+    return () => clearInterval(t);
+  }, [total]);
+
+  if (total === 0) return null;
+
+  const safeIndex = index % total;
+  const current = items[safeIndex];
 
   return (
     <div className="h-10 bg-ashanti-green flex items-center overflow-hidden px-0 border-b border-white/10">
@@ -278,31 +300,47 @@ function BreakingTicker({ articles, onArticleClick }: { articles: Article[]; onA
       {/* Rotating headline */}
       <div className="flex-1 overflow-hidden relative h-full mx-3">
         <AnimatePresence mode="wait">
-          <motion.button
-            key={current.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4 }}
-            onClick={() => onArticleClick(current)}
-            className="absolute inset-0 flex items-center gap-2 text-left w-full"
-          >
-            <span className="w-1 h-1 bg-ashanti-gold rotate-45 inline-block shrink-0" />
-            <span className="text-[11px] font-bold text-white/80 hover:text-ashanti-gold transition-colors truncate uppercase tracking-wide">
-              {current.title}
-            </span>
-          </motion.button>
+          {current.isManual ? (
+            <motion.div
+              key="__manual__"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 flex items-center gap-2"
+            >
+              <span className="w-1 h-1 bg-ashanti-gold rotate-45 inline-block shrink-0" />
+              <span className="text-[11px] font-bold text-ashanti-gold truncate uppercase tracking-wide">
+                {current.title}
+              </span>
+            </motion.div>
+          ) : (
+            <motion.button
+              key={current.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              onClick={() => onArticleClick(current as Article)}
+              className="absolute inset-0 flex items-center gap-2 text-left w-full"
+            >
+              <span className="w-1 h-1 bg-ashanti-gold rotate-45 inline-block shrink-0" />
+              <span className="text-[11px] font-bold text-white/80 hover:text-ashanti-gold transition-colors truncate uppercase tracking-wide">
+                {current.title}
+              </span>
+            </motion.button>
+          )}
         </AnimatePresence>
       </div>
 
       {/* Prev / Next controls */}
       <div className="flex items-center gap-1 shrink-0 pr-3">
-        <button onClick={() => setIndex(i => (i - 1 + articles.length) % articles.length)}
+        <button onClick={() => setIndex(i => (i - 1 + total) % total)}
           className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-ashanti-gold transition-colors">
           <ChevronLeft size={13} />
         </button>
-        <span className="text-[9px] text-white/20 font-bold tabular-nums">{index + 1}/{articles.length}</span>
-        <button onClick={() => setIndex(i => (i + 1) % articles.length)}
+        <span className="text-[9px] text-white/20 font-bold tabular-nums">{safeIndex + 1}/{total}</span>
+        <button onClick={() => setIndex(i => (i + 1) % total)}
           className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-ashanti-gold transition-colors">
           <ChevronRight size={13} />
         </button>

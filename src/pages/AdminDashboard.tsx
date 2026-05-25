@@ -81,6 +81,10 @@ export default function AdminDashboard({ user }: { user: User }) {
   // Advertise tab
   const [adEnquiries, setAdEnquiries] = useState<any[]>([]);
   const [adLoading, setAdLoading] = useState(false);
+  const [liveAds, setLiveAds] = useState<any[]>([]);
+  const [newAdForm, setNewAdForm] = useState({ brand: '', tagline: '', cta_text: 'Learn More', cta_url: '', logo: '📢', accent_color: '#E09E2B', placement: 'leaderboard', package_tier: 'Bronze' });
+  const [adSubmitting, setAdSubmitting] = useState(false);
+  const [adFormStatus, setAdFormStatus] = useState('');
   const [adPackages, setAdPackages] = useState([
     { name: 'Bronze',           price: 'GH₵500',   period: '/month',   popular: false },
     { name: 'Silver',           price: 'GH₵1,500', period: '/month',   popular: false },
@@ -95,6 +99,7 @@ export default function AdminDashboard({ user }: { user: User }) {
     fetchComments();
     fetchBreakingNews();
     fetchAdEnquiries();
+    fetchLiveAds();
   }, []);
 
   async function fetchAdEnquiries() {
@@ -105,6 +110,21 @@ export default function AdminDashboard({ user }: { user: User }) {
       .order('created_at', { ascending: false });
     setAdEnquiries(data || []);
     setAdLoading(false);
+  }
+
+  async function fetchLiveAds() {
+    const { data } = await supabase.from('live_ads').select('*').order('created_at', { ascending: false });
+    setLiveAds(data || []);
+  }
+
+  async function toggleAdActive(id: string, active: boolean) {
+    await supabase.from('live_ads').update({ active }).eq('id', id);
+    setLiveAds(prev => prev.map(a => a.id === id ? { ...a, active } : a));
+  }
+
+  async function deleteAd(id: string) {
+    await supabase.from('live_ads').delete().eq('id', id);
+    setLiveAds(prev => prev.filter(a => a.id !== id));
   }
 
   async function updateAdStatus(id: string, status: string) {
@@ -226,16 +246,15 @@ export default function AdminDashboard({ user }: { user: User }) {
     setCommentsLoading(false);
   }
 
-  async function fetchBreakingNews() {
-    const { data } = await supabase
-      .from('site_settings')
-      .select('*')
-      .eq('key', 'breaking_news')
-      .maybeSingle();
-    if (data) {
-      setBreakingText(data.value || '');
-      setBreakingActive(data.active ?? false);
-    }
+  function fetchBreakingNews() {
+    try {
+      const saved = localStorage.getItem('bw_breaking');
+      if (saved) {
+        const { text, active } = JSON.parse(saved);
+        setBreakingText(text || '');
+        setBreakingActive(active ?? false);
+      }
+    } catch { /* */ }
   }
 
   async function handleCommentAction(id: string, action: 'approve' | 'reject') {
@@ -248,27 +267,24 @@ export default function AdminDashboard({ user }: { user: User }) {
     fetchComments();
   }
 
-  async function handleSaveBreakingNews(e: { preventDefault(): void }) {
+  function handleSaveBreakingNews(e: { preventDefault(): void }) {
     e.preventDefault();
     setBreakingLoading(true);
     setBreakingStatus('');
-    const { error } = await supabase.from('site_settings').upsert(
-      { key: 'breaking_news', value: breakingText.trim(), active: breakingActive },
-      { onConflict: 'key' }
-    );
-    setBreakingLoading(false);
-    if (error) {
-      setBreakingStatus('Failed to save: ' + error.message);
-    } else {
-      setBreakingStatus('Breaking news updated!');
-      setTimeout(() => setBreakingStatus(''), 3000);
+    try {
+      localStorage.setItem('bw_breaking', JSON.stringify({ text: breakingText.trim(), active: breakingActive }));
+      setBreakingStatus('✓ Breaking news updated!');
+    } catch {
+      setBreakingStatus('Failed to save.');
     }
+    setBreakingLoading(false);
+    setTimeout(() => setBreakingStatus(''), 3000);
   }
 
-  async function handleClearBreakingNews() {
+  function handleClearBreakingNews() {
     setBreakingText('');
     setBreakingActive(false);
-    await supabase.from('site_settings').upsert({ key: 'breaking_news', value: '', active: false }, { onConflict: 'key' });
+    localStorage.removeItem('bw_breaking');
     setBreakingStatus('Breaking news cleared.');
     setTimeout(() => setBreakingStatus(''), 3000);
   }
@@ -977,6 +993,156 @@ export default function AdminDashboard({ user }: { user: User }) {
         {/* ── Advertise ──────────────────────────────────────── */}
         {tab === 'Advertise' && (
           <div className="space-y-10">
+
+            {/* ── Post a Live Ad ─────────────────────────────── */}
+            <div>
+              <h2 className="text-lg font-bold mb-5">Post a Live Ad</h2>
+              <form className="bg-news-card border border-news-border rounded-2xl p-6 space-y-5"
+                onSubmit={async e => {
+                  e.preventDefault();
+                  if (!newAdForm.brand.trim()) return;
+                  setAdSubmitting(true); setAdFormStatus('');
+                  const { error } = await supabase.from('live_ads').insert({
+                    brand:        newAdForm.brand.trim(),
+                    tagline:      newAdForm.tagline.trim(),
+                    cta_text:     newAdForm.cta_text.trim() || 'Learn More',
+                    cta_url:      newAdForm.cta_url.trim() || '#',
+                    logo:         newAdForm.logo.trim() || '📢',
+                    accent_color: newAdForm.accent_color,
+                    placement:    newAdForm.placement,
+                    package_tier: newAdForm.package_tier,
+                    active:       true,
+                    created_at:   new Date().toISOString(),
+                  });
+                  setAdSubmitting(false);
+                  if (error) { setAdFormStatus('Error: ' + error.message); }
+                  else {
+                    setAdFormStatus('✓ Ad posted and live!');
+                    setNewAdForm({ brand: '', tagline: '', cta_text: 'Learn More', cta_url: '', logo: '📢', accent_color: '#E09E2B', placement: 'leaderboard', package_tier: 'Bronze' });
+                    fetchLiveAds();
+                    setTimeout(() => setAdFormStatus(''), 3000);
+                  }
+                }}>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Brand / Company *</label>
+                    <input required value={newAdForm.brand} onChange={e => setNewAdForm(f => ({ ...f, brand: e.target.value }))}
+                      placeholder="e.g. Kumasi City Mall"
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Tagline</label>
+                    <input value={newAdForm.tagline} onChange={e => setNewAdForm(f => ({ ...f, tagline: e.target.value }))}
+                      placeholder="e.g. Shop Premium. Live Royal."
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">CTA Button Text</label>
+                    <input value={newAdForm.cta_text} onChange={e => setNewAdForm(f => ({ ...f, cta_text: e.target.value }))}
+                      placeholder="e.g. Visit Now"
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">CTA Link (URL)</label>
+                    <input type="url" value={newAdForm.cta_url} onChange={e => setNewAdForm(f => ({ ...f, cta_url: e.target.value }))}
+                      placeholder="https://advertiser-website.com"
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Logo Emoji</label>
+                    <input value={newAdForm.logo} onChange={e => setNewAdForm(f => ({ ...f, logo: e.target.value }))}
+                      placeholder="📢"
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Accent Colour</label>
+                    <div className="flex gap-2 items-center">
+                      <input type="color" value={newAdForm.accent_color} onChange={e => setNewAdForm(f => ({ ...f, accent_color: e.target.value }))}
+                        className="w-10 h-10 rounded-lg border border-news-border cursor-pointer bg-brand-surface" />
+                      <span className="text-sm text-news-muted font-mono">{newAdForm.accent_color}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Placement</label>
+                    <select value={newAdForm.placement} onChange={e => setNewAdForm(f => ({ ...f, placement: e.target.value }))}
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors">
+                      <option value="leaderboard">Leaderboard (Homepage top)</option>
+                      <option value="rectangle">Rectangle (Sidebar)</option>
+                      <option value="square">Square (Sidebar)</option>
+                      <option value="wide">Wide Banner</option>
+                      <option value="all">All placements</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Package Tier</label>
+                    <select value={newAdForm.package_tier} onChange={e => setNewAdForm(f => ({ ...f, package_tier: e.target.value }))}
+                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors">
+                      {adPackages.map(p => <option key={p.name}>{p.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Live preview */}
+                {newAdForm.brand && (
+                  <div className="rounded-xl overflow-hidden border border-news-border">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-news-muted px-4 py-2 bg-brand-surface border-b border-news-border">Preview</p>
+                    <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-50 to-yellow-50">
+                      <div className="flex items-center gap-4">
+                        <span className="text-3xl">{newAdForm.logo || '📢'}</span>
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Sponsored</p>
+                          <p className="font-heading font-black text-gray-800">{newAdForm.brand}</p>
+                          <p className="text-sm text-gray-500 italic">{newAdForm.tagline}</p>
+                        </div>
+                      </div>
+                      <span className="px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest text-white"
+                        style={{ backgroundColor: newAdForm.accent_color }}>
+                        {newAdForm.cta_text || 'Learn More'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {adFormStatus && <p className={`text-xs font-bold ${adFormStatus.startsWith('✓') ? 'text-green-500' : 'text-red-400'}`}>{adFormStatus}</p>}
+
+                <button type="submit" disabled={adSubmitting}
+                  className="flex items-center gap-2 px-6 py-3 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl text-xs hover:bg-news-text hover:text-ashanti-gold transition-all disabled:opacity-50 shadow">
+                  {adSubmitting ? <><Loader2 size={13} className="animate-spin" /> Posting…</> : '↑ Post Ad Live'}
+                </button>
+              </form>
+
+              {/* Live ads list */}
+              {liveAds.length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <h3 className="text-sm font-bold text-news-text">Live Ads ({liveAds.length})</h3>
+                  {liveAds.map(ad => (
+                    <div key={ad.id} className="flex items-center justify-between gap-4 bg-news-card border border-news-border rounded-xl px-5 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xl shrink-0">{ad.logo}</span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-news-text text-sm truncate">{ad.brand}</p>
+                          <p className="text-[10px] text-news-muted">{ad.placement} · {ad.package_tier}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ad.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                          {ad.active ? 'Live' : 'Paused'}
+                        </span>
+                        <button onClick={() => toggleAdActive(ad.id, !ad.active)}
+                          className="text-[10px] font-bold text-ashanti-gold hover:text-news-text transition-colors uppercase tracking-widest">
+                          {ad.active ? 'Pause' : 'Resume'}
+                        </button>
+                        <button onClick={() => deleteAd(ad.id)}
+                          className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors uppercase tracking-widest">
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Package management */}
             <div>

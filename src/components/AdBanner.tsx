@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 type AdSize = 'leaderboard' | 'rectangle' | 'square' | 'wide';
 
@@ -73,14 +75,45 @@ const ADS = [
   },
 ];
 
-function getAdIndex(seed: number) {
-  return seed % ADS.length;
+function getAdIndex(seed: number, pool: number) {
+  return seed % pool;
+}
+
+// Module-level cache so all AdBanner instances share one fetch
+let _liveAds: any[] | null = null;
+let _fetchedAt = 0;
+
+function mapLiveAd(a: any) {
+  return {
+    brand:   a.brand,
+    tagline: a.tagline || '',
+    cta:     a.cta_text || 'Learn More',
+    ctaUrl:  a.cta_url || '#',
+    bg:      'from-amber-50 to-yellow-50',
+    accent:  a.accent_color || '#E09E2B',
+    label:   a.package_tier || 'Sponsored',
+    logo:    a.logo || '📢',
+  };
 }
 
 export default function AdBanner({ size = 'rectangle', className = '', customAd }: AdBannerProps) {
-  // Use time-based rotation so different slots show different ads
+  const [liveAds, setLiveAds] = useState<typeof ADS>(_liveAds ? _liveAds.map(mapLiveAd) : []);
+
+  useEffect(() => {
+    if (_liveAds && Date.now() - _fetchedAt < 300_000) {
+      setLiveAds(_liveAds.map(mapLiveAd));
+      return;
+    }
+    supabase.from('live_ads').select('*').eq('active', true).then(({ data }) => {
+      _liveAds = data || [];
+      _fetchedAt = Date.now();
+      setLiveAds(_liveAds.map(mapLiveAd));
+    });
+  }, []);
+
   const slot = Math.floor(Date.now() / 60000) + (size === 'leaderboard' ? 0 : size === 'wide' ? 2 : size === 'square' ? 4 : 1);
-  const ad = customAd || ADS[getAdIndex(slot)];
+  const pool = liveAds.length > 0 ? liveAds : ADS;
+  const ad = customAd || pool[getAdIndex(slot, pool.length)];
 
   if (size === 'leaderboard') {
     return (
@@ -97,8 +130,8 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
             </div>
           </div>
           <a
-            href="#"
-            onClick={e => e.preventDefault()}
+            href={(ad as any).ctaUrl || '#'}
+            target="_blank" rel="noopener noreferrer"
             className="flex items-center space-x-2 px-6 py-3 rounded-lg font-black text-[11px] uppercase tracking-widest text-white transition-all hover:opacity-80 whitespace-nowrap"
             style={{ backgroundColor: ad.accent }}
           >
@@ -123,8 +156,8 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
             </div>
           </div>
           <a
-            href="#"
-            onClick={e => e.preventDefault()}
+            href={(ad as any).ctaUrl || '#'}
+            target="_blank" rel="noopener noreferrer"
             className="px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest text-white hover:opacity-80 transition-all whitespace-nowrap"
             style={{ backgroundColor: ad.accent }}
           >
@@ -136,7 +169,7 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
   }
 
   if (size === 'square') {
-    const ad2 = ADS[getAdIndex(slot + 1)];
+    const ad2 = pool[getAdIndex(slot + 1, pool.length)];
     return (
       <div className={`bg-gradient-to-br ${ad2.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all aspect-square flex flex-col items-center justify-center p-6 text-center ${className}`}>
         <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-3">Sponsored</p>
