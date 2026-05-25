@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Article } from '../types';
 import { motion } from 'motion/react';
 import { Radio, Clock, ArrowRight, Volume2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const DEFAULT_STREAM = 'https://www.youtube.com/embed/ArF_tiH8A5s';
 
@@ -26,10 +27,8 @@ export default function LivePage({ articles, onArticleClick }: LivePageProps) {
   const [streamUrl, setStreamUrl] = useState(DEFAULT_STREAM);
 
   useEffect(() => {
-    try {
-      const tv = localStorage.getItem('bw_tv');
-      if (tv) { const { live } = JSON.parse(tv); if (live) setStreamUrl(toEmbedUrl(live)); }
-    } catch { /* */ }
+    supabase.from('site_config').select('value').eq('key', 'live_tv_url').single()
+      .then(({ data }) => { if (data?.value) setStreamUrl(toEmbedUrl(data.value)); });
   }, []);
 
   return (

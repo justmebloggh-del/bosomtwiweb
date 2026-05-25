@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 import ArticleCard from '../components/ArticleCard';
 import AdBanner from '../components/AdBanner';
 import { Article } from '../types';
@@ -367,10 +368,8 @@ export default function Home({ onArticleClick, articles, onCategoryClick, onNavi
   const [bosomtwiTvEmbed, setBosomtwiTvEmbed] = useState(DEFAULT_TV_EMBED);
 
   useEffect(() => {
-    try {
-      const tv = localStorage.getItem('bw_tv');
-      if (tv) { const { bosomtwi } = JSON.parse(tv); if (bosomtwi) setBosomtwiTvEmbed(toEmbedUrl(bosomtwi)); }
-    } catch { /* */ }
+    supabase.from('site_config').select('value').eq('key', 'bosomtwi_tv_url').single()
+      .then(({ data }) => { if (data?.value) setBosomtwiTvEmbed(toEmbedUrl(data.value)); });
   }, []);
 
   if (loading) {

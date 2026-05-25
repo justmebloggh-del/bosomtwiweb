@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 
-const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'Podcasts', 'Advertise', 'Settings'] as const;
+const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'TV', 'Podcasts', 'Advertise', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
 
 const ALL_CATEGORIES = [
@@ -79,10 +79,11 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [siteTitle, setSiteTitle] = useState('Bosomtwi Web');
   const [settingsStatus, setSettingsStatus] = useState('');
 
-  // Settings — TV streams
+  // TV tab
   const [liveTvUrl, setLiveTvUrl] = useState('');
   const [bosomtwiTvUrl, setBosomtwiTvUrl] = useState('');
   const [tvStatus, setTvStatus] = useState('');
+  const [tvSaving, setTvSaving] = useState(false);
 
   // Comments tab
   const [comments, setComments] = useState<any[]>([]);
@@ -126,11 +127,30 @@ export default function AdminDashboard({ user }: { user: User }) {
     fetchBreakingNews();
     fetchAdEnquiries();
     fetchLiveAds();
-    try {
-      const tv = localStorage.getItem('bw_tv');
-      if (tv) { const { live, bosomtwi } = JSON.parse(tv); if (live) setLiveTvUrl(live); if (bosomtwi) setBosomtwiTvUrl(bosomtwi); }
-    } catch { /* */ }
+    fetchTvUrls();
   }, []);
+
+  async function fetchTvUrls() {
+    const { data } = await supabase.from('site_config').select('key,value').in('key', ['live_tv_url', 'bosomtwi_tv_url']);
+    if (data) {
+      data.forEach(row => {
+        if (row.key === 'live_tv_url') setLiveTvUrl(row.value);
+        if (row.key === 'bosomtwi_tv_url') setBosomtwiTvUrl(row.value);
+      });
+    }
+  }
+
+  async function saveTvUrls(live: string, bosomtwi: string) {
+    setTvSaving(true); setTvStatus('');
+    const rows = [
+      { key: 'live_tv_url',     value: live.trim()     || 'https://www.youtube.com/embed/ArF_tiH8A5s' },
+      { key: 'bosomtwi_tv_url', value: bosomtwi.trim() || 'https://www.youtube.com/embed/ArF_tiH8A5s' },
+    ];
+    const { error } = await supabase.from('site_config').upsert(rows, { onConflict: 'key' });
+    setTvSaving(false);
+    if (error) { setTvStatus('Error: ' + error.message); }
+    else { setTvStatus('✓ TV URLs updated — live for all visitors!'); setTimeout(() => setTvStatus(''), 4000); }
+  }
 
   async function fetchAdEnquiries() {
     setAdLoading(true);
@@ -898,6 +918,78 @@ export default function AdminDashboard({ user }: { user: User }) {
           </div>
         )}
 
+        {/* ── TV ─────────────────────────────────────────────── */}
+        {tab === 'TV' && (
+          <div className="max-w-2xl space-y-8">
+            <div className="bg-news-card rounded-2xl border border-news-border shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-news-border flex items-center gap-3">
+                <div className="w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="text-white text-xs font-black">TV</span>
+                </div>
+                <div>
+                  <h2 className="font-bold text-base">TV Stream URLs</h2>
+                  <p className="text-xs text-news-muted mt-0.5">Paste any YouTube link. Changes go live for all visitors instantly.</p>
+                </div>
+              </div>
+              <div className="p-6">
+                <form onSubmit={e => { e.preventDefault(); saveTvUrls(liveTvUrl, bosomtwiTvUrl); }} className="space-y-6">
+
+                  {/* Live TV */}
+                  <div className="bg-brand-surface rounded-xl p-5 border border-news-border space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex items-center gap-1.5 bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        Live
+                      </span>
+                      <h3 className="text-sm font-black text-news-text">Live TV Page</h3>
+                    </div>
+                    <p className="text-[10px] text-news-muted">Shown on the full-screen <strong>/live</strong> page player.</p>
+                    <input
+                      type="text"
+                      value={liveTvUrl}
+                      onChange={e => setLiveTvUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=…"
+                      className="w-full border border-news-border rounded-xl px-4 py-3 text-sm font-medium bg-white text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
+                    />
+                    {liveTvUrl && (
+                      <p className="text-[10px] text-green-600 font-bold">✓ URL set</p>
+                    )}
+                  </div>
+
+                  {/* Bosomtwi TV */}
+                  <div className="bg-brand-surface rounded-xl p-5 border border-news-border space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="bg-ashanti-green text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">Bosomtwi TV</span>
+                      <h3 className="text-sm font-black text-news-text">Homepage Embed</h3>
+                    </div>
+                    <p className="text-[10px] text-news-muted">Shown in the <strong>BOSOMTWIWEB TV</strong> block on the homepage.</p>
+                    <input
+                      type="text"
+                      value={bosomtwiTvUrl}
+                      onChange={e => setBosomtwiTvUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=…"
+                      className="w-full border border-news-border rounded-xl px-4 py-3 text-sm font-medium bg-white text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
+                    />
+                    {bosomtwiTvUrl && (
+                      <p className="text-[10px] text-green-600 font-bold">✓ URL set</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-1">
+                    <button type="submit" disabled={tvSaving}
+                      className="bg-ashanti-gold text-black px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2">
+                      {tvSaving && <Loader2 size={13} className="animate-spin" />}
+                      {tvSaving ? 'Saving…' : 'Save & Publish'}
+                    </button>
+                    {tvStatus && <p className={`text-xs font-bold ${tvStatus.startsWith('✓') ? 'text-green-500' : 'text-red-400'}`}>{tvStatus}</p>}
+                  </div>
+                  <p className="text-[10px] text-news-muted">Accepts YouTube watch URLs, short URLs (youtu.be), or embed URLs.</p>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Podcasts ───────────────────────────────────────── */}
         {tab === 'Podcasts' && (
           <div className="max-w-2xl">
@@ -1488,63 +1580,6 @@ export default function AdminDashboard({ user }: { user: User }) {
                 {authors.length === 0 && (
                   <div className="text-center py-8 text-news-muted text-sm">No authors found.</div>
                 )}
-              </div>
-            </section>
-
-            {/* ── TV Streams ─────────────────────────────────── */}
-            <section className="bg-news-card rounded-2xl border border-news-border shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-news-border">
-                <h2 className="font-bold text-base">TV Stream URLs</h2>
-                <p className="text-xs text-news-muted mt-0.5">Paste a YouTube watch or embed URL. Changes go live immediately.</p>
-              </div>
-              <div className="p-6">
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    try {
-                      localStorage.setItem('bw_tv', JSON.stringify({ live: liveTvUrl.trim(), bosomtwi: bosomtwiTvUrl.trim() }));
-                      setTvStatus('✓ TV URLs saved!');
-                    } catch { setTvStatus('Failed to save.'); }
-                    setTimeout(() => setTvStatus(''), 3000);
-                  }}
-                  className="space-y-5 max-w-xl"
-                >
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">
-                      Live TV Page — Stream URL
-                    </label>
-                    <input
-                      type="url"
-                      value={liveTvUrl}
-                      onChange={e => setLiveTvUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=… or embed URL"
-                      className="w-full border border-news-border rounded-xl px-4 py-2.5 text-sm font-semibold bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
-                    />
-                    <p className="text-[10px] text-news-muted mt-1">Shown on the /live page full-screen player.</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">
-                      Bosomtwi TV — Homepage Embed URL
-                    </label>
-                    <input
-                      type="url"
-                      value={bosomtwiTvUrl}
-                      onChange={e => setBosomtwiTvUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=… or embed URL"
-                      className="w-full border border-news-border rounded-xl px-4 py-2.5 text-sm font-semibold bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
-                    />
-                    <p className="text-[10px] text-news-muted mt-1">Shown in the TV embed block on the homepage.</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="submit"
-                      className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-                    >
-                      Save URLs
-                    </button>
-                    {tvStatus && <p className={`text-xs font-bold ${tvStatus.startsWith('✓') ? 'text-green-500' : 'text-red-400'}`}>{tvStatus}</p>}
-                  </div>
-                </form>
               </div>
             </section>
 
