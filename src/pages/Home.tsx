@@ -54,7 +54,22 @@ function CategorySection({ cat, articles, onArticleClick, onCategoryClick }: {
   return (
     <section className="py-12 border-t border-news-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeader title={cat.cat} category={cat.cat} onSeeAll={() => onCategoryClick(cat.cat)} />
+
+        {/* Category section header — green strip, white title → gold on hover */}
+        <div className="flex items-center justify-between mb-8 bg-ashanti-green px-5 py-3 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-6 bg-ashanti-gold rounded-full shrink-0" />
+            <h2 className="font-heading text-2xl md:text-3xl font-bold text-white hover:text-ashanti-gold transition-colors tracking-tight cursor-pointer"
+              onClick={() => onCategoryClick(cat.cat)}>
+              {cat.cat}
+            </h2>
+          </div>
+          <button onClick={() => onCategoryClick(cat.cat)}
+            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-ashanti-gold hover:text-white transition-colors group">
+            See All <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Lead story */}
           <div className="lg:col-span-2 cursor-pointer group" onClick={() => onArticleClick(lead)}>
@@ -66,7 +81,7 @@ function CategorySection({ cat, articles, onArticleClick, onCategoryClick }: {
                 <span className="cat-pill text-white" style={{ backgroundColor: cat.color }}>{cat.cat}</span>
               </div>
               <div className="absolute bottom-0 p-6 text-white">
-                <h3 className="font-heading text-xl md:text-2xl font-bold leading-tight group-hover:text-ashanti-gold transition-colors line-clamp-2">
+                <h3 className="font-heading text-xl md:text-2xl font-bold leading-tight text-white group-hover:text-ashanti-gold transition-colors line-clamp-2">
                   {lead.title}
                 </h3>
                 <p className="text-white/60 text-sm mt-2 line-clamp-2">{lead.excerpt}</p>
