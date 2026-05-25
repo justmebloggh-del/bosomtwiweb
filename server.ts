@@ -501,10 +501,96 @@ app.delete('/api/articles/:id', authenticateToken, async (req, res) => {
 });
 
 // — Newsletter
-app.post('/api/newsletter', (req, res) => {
+app.post('/api/newsletter', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: 'Email required' });
-  res.json({ success: true, message: 'Subscribed successfully' });
+  try {
+    if (db) {
+      await db.from('newsletter_subscribers').upsert({ email }, { onConflict: 'email' });
+    }
+    res.json({ success: true, message: 'Subscribed successfully' });
+  } catch {
+    res.json({ success: true, message: 'Subscribed successfully' });
+  }
+});
+
+// — Contact submissions
+app.post('/api/contact', async (req, res) => {
+  const { name, email, subject, message } = req.body;
+  if (!name || !email || !message) return res.status(400).json({ message: 'name, email and message are required' });
+  try {
+    if (db) {
+      const { error } = await db.from('contact_submissions').insert({ name, email, subject: subject || 'General Inquiry', message });
+      if (error) throw error;
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+// — Story submissions
+app.post('/api/submit-story', async (req, res) => {
+  const { name, email, title, story } = req.body;
+  if (!name || !email || !title || !story) return res.status(400).json({ message: 'name, email, title and story are required' });
+  try {
+    if (db) {
+      const { error } = await db.from('story_submissions').insert(req.body);
+      if (error) throw error;
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+// — Sitemap
+app.get('/sitemap.xml', async (req, res) => {
+  const BASE = 'https://www.bosomtwiweb.com';
+  const STATIC = ['', '/trending', '/videos', '/live', '/archives', '/advertise', '/community', '/contact', '/submit', '/privacy', '/terms'];
+
+  let articles: any[] = [];
+  try { articles = await getArticles(); } catch { /* ignore */ }
+
+  const urls = [
+    ...STATIC.map(path => ({
+      loc: `${BASE}${path}`,
+      lastmod: new Date().toISOString().split('T')[0],
+      changefreq: path === '' ? 'hourly' : 'weekly',
+      priority: path === '' ? '1.0' : '0.7',
+    })),
+    ...articles.map((a: any) => ({
+      loc: `${BASE}/article/${a.slug || a.id}`,
+      lastmod: (a.publishedAt || '').split('T')[0] || new Date().toISOString().split('T')[0],
+      changefreq: 'weekly',
+      priority: '0.8',
+    })),
+  ];
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(u => `  <url>
+    <loc>${u.loc}</loc>
+    <lastmod>${u.lastmod}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+  res.setHeader('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+// — robots.txt
+app.get('/robots.txt', (_, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://www.bosomtwiweb.com/sitemap.xml
+`);
 });
 
 // ─────────────────────────────────────────────────────────────────

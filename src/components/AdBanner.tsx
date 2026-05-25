@@ -84,16 +84,16 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
 
   if (size === 'leaderboard') {
     return (
-      <div className={`w-full bg-gradient-to-r ${ad.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-lg transition-all ${className}`}>
+      <div className={`w-full bg-gradient-to-r ${ad.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-lg transition-all ${className}`}>
         <div className="flex items-center justify-between px-8 py-5">
           <div className="flex items-center space-x-6">
             <span className="text-4xl">{ad.logo}</span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-0.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-0.5">
                 Sponsored • {ad.label}
               </p>
-              <h4 className="font-heading text-xl font-black text-gray-800 leading-tight">{ad.brand}</h4>
-              <p className="text-sm text-gray-500 font-medium italic">{ad.tagline}</p>
+              <h4 className="font-heading text-xl font-black text-gray-800 dark:text-news-text leading-tight">{ad.brand}</h4>
+              <p className="text-sm text-gray-500 dark:text-news-muted font-medium italic">{ad.tagline}</p>
             </div>
           </div>
           <a
@@ -113,13 +113,13 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
 
   if (size === 'wide') {
     return (
-      <div className={`w-full bg-gradient-to-r ${ad.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
+      <div className={`w-full bg-gradient-to-r ${ad.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <span className="text-2xl">{ad.logo}</span>
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Sponsored</p>
-              <h4 className="font-bold text-gray-800 text-sm leading-tight">{ad.brand} — <span className="font-normal text-gray-500 italic">{ad.tagline}</span></h4>
+              <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted">Sponsored</p>
+              <h4 className="font-bold text-gray-800 dark:text-news-text text-sm leading-tight">{ad.brand} — <span className="font-normal text-gray-500 dark:text-news-muted italic">{ad.tagline}</span></h4>
             </div>
           </div>
           <a
@@ -138,11 +138,11 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
   if (size === 'square') {
     const ad2 = ADS[getAdIndex(slot + 1)];
     return (
-      <div className={`bg-gradient-to-br ${ad2.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all aspect-square flex flex-col items-center justify-center p-6 text-center ${className}`}>
-        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-3">Sponsored</p>
+      <div className={`bg-gradient-to-br ${ad2.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all aspect-square flex flex-col items-center justify-center p-6 text-center ${className}`}>
+        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-3">Sponsored</p>
         <span className="text-5xl mb-3">{ad2.logo}</span>
-        <h4 className="font-heading font-black text-gray-800 text-lg leading-tight mb-1">{ad2.brand}</h4>
-        <p className="text-gray-500 text-xs italic mb-4">{ad2.tagline}</p>
+        <h4 className="font-heading font-black text-gray-800 dark:text-news-text text-lg leading-tight mb-1">{ad2.brand}</h4>
+        <p className="text-gray-500 dark:text-news-muted text-xs italic mb-4">{ad2.tagline}</p>
         <a
           href="#"
           onClick={e => e.preventDefault()}
@@ -157,14 +157,14 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
 
   // Default: rectangle
   return (
-    <div className={`w-full bg-gradient-to-br ${ad.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
+    <div className={`w-full bg-gradient-to-br ${ad.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
       <div className="p-6">
-        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-3">Advertisement</p>
+        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-3">Advertisement</p>
         <div className="flex items-start space-x-4 mb-4">
           <span className="text-3xl">{ad.logo}</span>
           <div>
-            <h4 className="font-heading font-black text-gray-800 text-lg leading-tight">{ad.brand}</h4>
-            <p className="text-gray-500 text-sm italic">{ad.tagline}</p>
+            <h4 className="font-heading font-black text-gray-800 dark:text-news-text text-lg leading-tight">{ad.brand}</h4>
+            <p className="text-gray-500 dark:text-news-muted text-sm italic">{ad.tagline}</p>
           </div>
         </div>
         <a

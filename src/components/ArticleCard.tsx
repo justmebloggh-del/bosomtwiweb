@@ -1,128 +1,161 @@
 import { Article } from '../types';
-import { Clock, User as UserIcon, ArrowUpRight, Play } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Clock, ArrowUpRight, Play } from 'lucide-react';
 
 interface ArticleCardProps {
   article: Article;
-  variant?: 'large' | 'medium' | 'small' | 'list';
+  variant?: 'large' | 'medium' | 'small' | 'list' | 'cinematic';
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 export default function ArticleCard({ article, variant = 'medium' }: ArticleCardProps) {
-  const isLarge = variant === 'large';
-  const isList = variant === 'list';
-
-  if (isLarge) {
+  // ── Cinematic (full-bleed overlay) ──────────────────────────
+  if (variant === 'cinematic') {
     return (
-      <motion.div 
-        whileHover={{ opacity: 0.95 }}
-        className="group relative h-[600px] overflow-hidden cursor-pointer bg-gray-200"
-      >
-        <img 
-          src={article.image} 
-          alt={article.title}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-70"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
-        
-        <div className="absolute bottom-0 p-10 lg:p-16 w-full z-20">
-          <div className="flex items-center space-x-3 mb-6">
-            <span className="text-ashanti-gold text-[12px] uppercase font-bold tracking-[0.3em] font-sans">
-              Top Story • {article.category}
-            </span>
+      <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-gray-200 rounded-2xl">
+        <img src={article.image} alt={article.title}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-70" />
+        <div className="news-banner-overlay absolute inset-0 rounded-2xl" />
+        <div className="absolute bottom-0 p-8 w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="cat-pill bg-ashanti-gold text-black">{article.category}</span>
             {(article as any).status === 'published' && (
-              <span className="bg-ashanti-gold text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 flex items-center">
-                <span className="w-1.5 h-1.5 bg-black rounded-full mr-2 animate-pulse" />
-                WORLD BROADCAST
+              <span className="cat-pill bg-red-600 text-white flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />LIVE
               </span>
             )}
           </div>
-          
-          <h2 className="font-heading text-4xl md:text-7xl font-bold leading-[1] tracking-tight mb-8 text-white group-hover:text-ashanti-gold transition-colors">
+          <h2 className="font-heading text-3xl md:text-5xl font-bold leading-tight text-white group-hover:text-ashanti-gold transition-colors mb-4 line-clamp-3">
             {article.title}
           </h2>
-          
-          <div className="flex items-center space-x-6 text-white/50 text-sm font-sans font-medium">
-            <span className="flex items-center"><UserIcon size={14} className="mr-2" /> {article.author}</span>
-            <span className="flex items-center"><Clock size={14} className="mr-2" /> {new Date(article.publishedAt).toLocaleDateString()}</span>
+          <div className="flex items-center gap-4 text-white/50 text-[11px] font-bold uppercase tracking-widest">
+            <span>{article.author}</span>
+            <span className="flex items-center gap-1"><Clock size={10} />{timeAgo(article.publishedAt)}</span>
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
-  if (isList) {
+  // ── Large ────────────────────────────────────────────────────
+  if (variant === 'large') {
     return (
-      <motion.div 
-        className="flex space-x-6 items-center group cursor-pointer border-b border-brand-secondary/20 pb-8 last:border-0"
-      >
-        <div className="w-28 h-28 bg-gray-100 rounded-xl shrink-0 overflow-hidden shadow-sm border border-gray-200">
-          <img 
-            src={article.image} 
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100" 
-            alt={article.title}
-          />
-        </div>
-        <div className="flex-1">
-          <div className="text-[11px] uppercase tracking-widest font-bold text-ashanti-gold mb-2">
-            {article.category}
+      <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-gray-200 rounded-2xl">
+        <img src={article.image} alt={article.title}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-65" />
+        <div className="news-banner-overlay absolute inset-0 rounded-2xl" />
+        <div className="absolute bottom-0 p-8 w-full">
+          <span className="cat-pill bg-ashanti-gold text-black mb-4 inline-block">
+            Top Story · {article.category}
+          </span>
+          <h2 className="font-heading text-3xl md:text-5xl font-bold leading-tight text-white group-hover:text-ashanti-gold transition-colors mb-3 line-clamp-3">
+            {article.title}
+          </h2>
+          <div className="flex items-center gap-4 text-white/50 text-[11px] font-bold uppercase tracking-widest">
+            <span>{article.author}</span>
+            <span className="flex items-center gap-1"><Clock size={10} />{timeAgo(article.publishedAt)}</span>
           </div>
-          <h3 className="font-heading text-xl font-bold leading-tight text-news-text group-hover:text-ashanti-gold transition-colors line-clamp-2">
+        </div>
+      </div>
+    );
+  }
+
+  // ── List ─────────────────────────────────────────────────────
+  if (variant === 'list') {
+    return (
+      <div className="flex gap-4 items-start group cursor-pointer border-b border-news-border pb-5 last:border-0">
+        <div className="w-24 h-24 rounded-xl shrink-0 overflow-hidden bg-brand-surface border border-news-border">
+          <img src={article.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-90 group-hover:opacity-100" alt={article.title} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-[9px] uppercase tracking-widest font-black text-ashanti-gold block mb-1">{article.category}</span>
+          <h3 className="font-heading text-base font-bold leading-snug text-news-text group-hover:text-ashanti-gold transition-colors line-clamp-2 mb-2">
             {article.title}
           </h3>
-          <div className="flex items-center text-[10px] text-news-text/40 font-bold space-x-4 mt-3 uppercase tracking-widest font-sans">
-             <span>{article.author}</span>
-             <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+          <div className="flex items-center gap-3 text-[10px] text-news-muted font-bold uppercase tracking-widest">
+            <span>{article.author}</span>
+            <span className="flex items-center gap-1"><Clock size={9} />{timeAgo(article.publishedAt)}</span>
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
+  // ── Small ────────────────────────────────────────────────────
+  if (variant === 'small') {
+    return (
+      <div className="group cursor-pointer flex gap-3">
+        <div className="w-16 h-16 rounded-lg shrink-0 overflow-hidden bg-brand-surface">
+          <img src={article.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={article.title} />
+        </div>
+        <div className="min-w-0">
+          <span className="text-[9px] uppercase tracking-widest font-black text-ashanti-gold block mb-0.5">{article.category}</span>
+          <h4 className="font-heading text-sm font-bold leading-snug text-news-text group-hover:text-ashanti-gold transition-colors line-clamp-2">
+            {article.title}
+          </h4>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Medium (default) — premium card ─────────────────────────
   return (
-    <motion.div 
-      className="bg-white rounded-xl overflow-hidden border border-brand-secondary/20 hover:border-ashanti-gold/30 hover:shadow-xl transition-all duration-500 group cursor-pointer flex flex-col h-full"
-    >
-      <div className="relative h-64 overflow-hidden bg-gray-100">
-        <img 
-          src={article.image} 
-          alt={article.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
-        />
+    <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border hover:border-ashanti-gold/40 hover:shadow-xl transition-all duration-400 group cursor-pointer flex flex-col h-full">
+      <div className="relative overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
+        <img src={article.image} alt={article.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+        {/* Video play button */}
         {article.videoUrl && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/0 transition-colors">
-            <div className="w-14 h-14 bg-ashanti-gold rounded-full flex items-center justify-center text-black shadow-xl backdrop-blur-sm group-hover:scale-110 transition-transform">
-              <Play size={24} fill="currentColor" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 bg-ashanti-gold rounded-full flex items-center justify-center text-black shadow-xl group-hover:scale-110 transition-transform">
+              <Play size={18} fill="currentColor" className="ml-0.5" />
             </div>
           </div>
         )}
-        <div className="absolute top-4 left-4 flex space-x-2">
-          <span className="bg-gray-200 text-news-text text-[10px] font-bold uppercase tracking-widest px-4 py-2 border border-gray-300 shadow-sm">
-            {article.category}
-          </span>
+
+        {/* Category badge */}
+        <div className="absolute top-3 left-3 flex gap-2">
+          <span className="cat-pill bg-ashanti-gold text-black shadow-sm">{article.category}</span>
           {(article as any).status === 'published' && (
-            <span className="bg-ashanti-gold text-black text-[10px] font-black uppercase tracking-widest px-3 py-2 flex items-center">
-              <span className="w-1.5 h-1.5 bg-black rounded-full mr-2 animate-pulse" />
-              LIVE
+            <span className="cat-pill bg-red-600 text-white flex items-center gap-1">
+              <span className="w-1 h-1 bg-white rounded-full animate-ping" />LIVE
             </span>
           )}
         </div>
-      </div>
-      
-      <div className="p-8 flex flex-col flex-1">
-        <h3 className="font-heading text-2xl font-bold mb-4 leading-tight text-news-text group-hover:text-ashanti-gold transition-colors uppercase tracking-tight">
-          {article.title}
-        </h3>
-        <p className="text-news-text/60 text-[16px] font-sans line-clamp-3 mb-6 leading-relaxed">
-          {article.excerpt}
-        </p>
-        
-        <div className="mt-auto flex items-center justify-between pt-6 border-t border-brand-secondary/10">
-          <span className="text-[11px] font-bold text-news-text/30 uppercase tracking-widest font-sans">{article.author}</span>
-          <div className="flex items-center text-ashanti-gold text-[10px] font-bold uppercase tracking-widest group-hover:mr-2 transition-all">
-            Read More <ArrowUpRight size={14} className="ml-1" />
-          </div>
+
+        {/* Time badge */}
+        <div className="absolute bottom-3 right-3">
+          <span className="flex items-center gap-1 bg-black/60 text-white/80 text-[9px] font-bold px-2 py-1 rounded-full backdrop-blur-sm">
+            <Clock size={9} />{timeAgo(article.publishedAt)}
+          </span>
         </div>
       </div>
-    </motion.div>
+
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-heading text-lg font-bold mb-2.5 leading-snug text-news-text group-hover:text-ashanti-gold transition-colors line-clamp-2">
+          {article.title}
+        </h3>
+        <p className="text-news-muted text-sm line-clamp-2 mb-4 leading-relaxed flex-1">
+          {article.excerpt}
+        </p>
+        <div className="flex items-center justify-between pt-4 border-t border-news-border">
+          <span className="text-[10px] font-bold text-news-muted uppercase tracking-widest">{article.author}</span>
+          <span className="flex items-center gap-1 text-ashanti-gold text-[10px] font-black uppercase tracking-widest group-hover:gap-2 transition-all">
+            Read <ArrowUpRight size={12} />
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

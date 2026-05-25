@@ -1,0 +1,39 @@
+{
+  "name": "Bosomtwi Web",
+  "short_name": "BosomtwiWeb",
+  "description": "The premier digital media platform for Bosomtwe, the Ashanti Region, and beyond.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#D4A017",
+  "orientation": "portrait-primary",
+  "categories": ["news"],
+  "lang": "en-GH",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Breaking News",
+      "url": "/",
+      "description": "Read the latest breaking news"
+    },
+    {
+      "name": "Watch Live",
+      "url": "/?page=live",
+      "description": "Watch Bosomtwi Web TV live"
+    }
+  ]
+}
