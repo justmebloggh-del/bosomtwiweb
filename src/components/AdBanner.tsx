@@ -98,7 +98,7 @@ function mapLiveAd(a: any) {
 
 function AdLogo({ logo, size = 'md' }: { logo: string; size?: 'sm' | 'md' | 'lg' }) {
   const sizeMap = { sm: 'w-8 h-8 text-2xl', md: 'w-10 h-10 text-3xl', lg: 'w-12 h-12 text-4xl' };
-  if (logo.startsWith('http')) {
+  if (logo.startsWith('http') || logo.startsWith('data:')) {
     return <img src={logo} alt="Ad logo" className={`${sizeMap[size]} rounded-lg object-contain border border-gray-100 bg-white`} />;
   }
   return <span className={sizeMap[size].split(' ').slice(2).join(' ')}>{logo}</span>;

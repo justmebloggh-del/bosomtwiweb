@@ -39,6 +39,24 @@ interface AnalyticsData {
   visitChartData: { date: string; visits: number }[];
 }
 
+function resizeImageToBase64(file: File, maxPx = 200): Promise<string> {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+    img.src = url;
+  });
+}
+
 export default function AdminDashboard({ user }: { user: User }) {
   const [tab, setTab] = useState<Tab>('Articles');
   const [articles, setArticles] = useState<any[]>([]);
@@ -1014,22 +1032,12 @@ export default function AdminDashboard({ user }: { user: User }) {
                   e.preventDefault();
                   if (!newAdForm.brand.trim()) return;
                   setAdSubmitting(true); setAdFormStatus('');
-                  let logoValue = newAdForm.logo.trim() || '📢';
-                  if (logoFile) {
-                    const ext = logoFile.name.split('.').pop();
-                    const path = `ads/logo-${Date.now()}.${ext}`;
-                    const { error: upErr } = await supabase.storage.from('story-photos').upload(path, logoFile, { upsert: true });
-                    if (!upErr) {
-                      const { data: { publicUrl } } = supabase.storage.from('story-photos').getPublicUrl(path);
-                      logoValue = publicUrl;
-                    }
-                  }
                   const { error } = await supabase.from('live_ads').insert({
                     brand:        newAdForm.brand.trim(),
                     tagline:      newAdForm.tagline.trim(),
                     cta_text:     newAdForm.cta_text.trim() || 'Learn More',
                     cta_url:      newAdForm.cta_url.trim() || '#',
-                    logo:         logoValue,
+                    logo:         newAdForm.logo.trim() || '📢',
                     accent_color: newAdForm.accent_color,
                     placement:    newAdForm.placement,
                     package_tier: newAdForm.package_tier,
@@ -1076,11 +1084,13 @@ export default function AdminDashboard({ user }: { user: User }) {
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Logo — Image or Emoji</label>
                     <input ref={logoFileRef} type="file" accept="image/*" id="ad-logo-input" className="hidden"
-                      onChange={e => {
+                      onChange={async e => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         setLogoFile(file);
                         setLogoPreview(URL.createObjectURL(file));
+                        const b64 = await resizeImageToBase64(file);
+                        if (b64) setNewAdForm(f => ({ ...f, logo: b64 }));
                       }} />
                     {logoPreview ? (
                       <div className="flex items-center gap-3 p-2 bg-brand-surface border border-news-border rounded-xl">
@@ -1090,7 +1100,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                           <p className="text-[10px] text-news-muted">Logo image selected</p>
                         </div>
                         <button type="button"
-                          onClick={() => { setLogoFile(null); setLogoPreview(''); if (logoFileRef.current) logoFileRef.current.value = ''; }}
+                          onClick={() => { setLogoFile(null); setLogoPreview(''); setNewAdForm(f => ({ ...f, logo: '📢' })); if (logoFileRef.current) logoFileRef.current.value = ''; }}
                           className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors shrink-0">
                           <X size={13} />
                         </button>
