@@ -275,12 +275,15 @@ export default function AdminDashboard({ user }: { user: User }) {
   return (
     <div className="min-h-screen bg-brand-surface text-news-text">
       {/* ── Top bar ──────────────────────────────────────────── */}
-      <div className="bg-news-card border-b border-news-border sticky top-0 z-10">
+      <div className="bg-ashanti-green sticky top-0 z-10">
+        <div className="kente-stripe" />
         <div className="max-w-6xl mx-auto px-4 md:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4">
             <div>
-              <h1 className="font-heading text-xl md:text-2xl font-bold leading-tight">Admin Dashboard</h1>
-              <p className="text-xs text-gray-400 mt-0.5">{user.name} · {user.role}</p>
+              <h1 className="font-heading text-xl md:text-2xl font-black leading-tight text-white tracking-tight">
+                Newsroom <span className="text-ashanti-gold">Dashboard</span>
+              </h1>
+              <p className="text-xs text-white/50 mt-0.5 uppercase tracking-widest font-bold">{user.name} · {user.role}</p>
             </div>
             <nav className="flex gap-1 flex-wrap">
               {TABS.map(t => (
@@ -289,8 +292,8 @@ export default function AdminDashboard({ user }: { user: User }) {
                   onClick={() => setTab(t)}
                   className={`px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest transition-all ${
                     tab === t
-                      ? 'bg-ashanti-gold text-black shadow-sm'
-                      : 'text-gray-500 hover:bg-gray-100'
+                      ? 'bg-ashanti-gold text-black shadow-lg shadow-ashanti-gold/20'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {t}
@@ -310,7 +313,7 @@ export default function AdminDashboard({ user }: { user: User }) {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold">
                 All Articles{' '}
-                <span className="text-gray-400 font-normal text-sm">({articles.length})</span>
+                <span className="text-news-muted font-normal text-sm">({articles.length})</span>
               </h2>
               <button
                 className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow"
@@ -319,15 +322,15 @@ export default function AdminDashboard({ user }: { user: User }) {
                 + New Article
               </button>
             </div>
-            <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+            <div className="bg-news-card rounded-2xl overflow-hidden shadow-sm border border-news-border">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
+                    <tr className="bg-brand-surface border-b border-news-border">
                       {['Title', 'Category', 'Author', 'Views', 'Published', 'Actions'].map(h => (
                         <th
                           key={h}
-                          className={`px-4 py-3 text-xs uppercase tracking-widest text-gray-400 font-bold ${h === 'Actions' ? 'text-right' : 'text-left'}`}
+                          className={`px-4 py-3 text-xs uppercase tracking-widest text-news-muted font-bold ${h === 'Actions' ? 'text-right' : 'text-left'}`}
                         >
                           {h}
                         </th>
@@ -336,22 +339,22 @@ export default function AdminDashboard({ user }: { user: User }) {
                   </thead>
                   <tbody>
                     {articles.map(article => (
-                      <tr key={article.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <tr key={article.id} className="border-b border-news-border hover:bg-brand-surface transition-colors">
                         <td className="px-4 py-3 font-semibold max-w-[240px] truncate">{article.title}</td>
                         <td className="px-4 py-3">
-                          <span className="bg-ashanti-gold/10 text-black/60 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                          <span className="bg-ashanti-gold/10 text-ashanti-gold text-[11px] font-bold px-2 py-0.5 rounded-full">
                             {article.category}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{article.author}</td>
+                        <td className="px-4 py-3 text-news-muted text-xs">{article.author}</td>
                         <td className="px-4 py-3 font-mono text-sm">{article.views ?? 0}</td>
-                        <td className="px-4 py-3 text-gray-400 text-xs">
+                        <td className="px-4 py-3 text-news-muted text-xs">
                           {new Date(article.published_at).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {deletingArticleId === article.id ? (
                             <div className="flex items-center justify-end gap-2">
-                              <span className="text-xs text-red-600 font-bold">Delete?</span>
+                              <span className="text-xs text-red-400 font-bold">Delete?</span>
                               <button
                                 onClick={() => handleDeleteArticle(article.id)}
                                 className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg font-bold hover:bg-red-600"
@@ -360,7 +363,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                               </button>
                               <button
                                 onClick={() => setDeletingArticleId(null)}
-                                className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg font-bold hover:bg-gray-200"
+                                className="text-xs bg-brand-surface text-news-muted px-2 py-1 rounded-lg font-bold hover:bg-news-border transition-colors"
                               >
                                 No
                               </button>
@@ -374,7 +377,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                                 Edit
                               </button>
                               <button
-                                className="text-xs text-red-400 font-bold hover:text-red-600"
+                                className="text-xs text-red-400 font-bold hover:text-red-500"
                                 onClick={() => setDeletingArticleId(article.id)}
                               >
                                 Delete
@@ -386,7 +389,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                     ))}
                     {articles.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-12 text-center text-gray-400 text-sm">
+                        <td colSpan={6} className="px-4 py-12 text-center text-news-muted text-sm">
                           No articles yet. Publish your first story.
                         </td>
                       </tr>
@@ -402,7 +405,7 @@ export default function AdminDashboard({ user }: { user: User }) {
         {tab === 'Analytics' && (
           <div className="space-y-6">
             {!analytics ? (
-              <div className="text-center py-16 text-gray-400 text-sm">Loading analytics…</div>
+              <div className="text-center py-16 text-news-muted text-sm">Loading analytics…</div>
             ) : (
               <>
                 {/* Content stat cards */}
@@ -413,12 +416,12 @@ export default function AdminDashboard({ user }: { user: User }) {
                     { label: 'Avg Views / Article', value: analytics.avgViewsPerArticle, icon: TrendingUp },
                     { label: 'This Month', value: `${analytics.monthlyArticles} articles`, icon: Calendar },
                   ].map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    <div key={label} className="bg-news-card rounded-2xl p-5 shadow-sm border border-news-border">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{label}</span>
+                        <span className="text-[10px] uppercase tracking-widest text-news-muted font-bold">{label}</span>
                         <Icon size={13} className="text-ashanti-gold" />
                       </div>
-                      <div className="text-2xl font-black text-gray-800">{value}</div>
+                      <div className="text-2xl font-black text-news-text">{value}</div>
                     </div>
                   ))}
                 </div>
@@ -433,40 +436,40 @@ export default function AdminDashboard({ user }: { user: User }) {
                   ].map(({ label, value, icon: Icon, sub }) => (
                     <div key={label} className="bg-ashanti-gold/5 border border-ashanti-gold/20 rounded-2xl p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{label}</span>
+                        <span className="text-[10px] uppercase tracking-widest text-news-muted font-bold">{label}</span>
                         <Icon size={13} className="text-ashanti-gold" />
                       </div>
-                      <div className="text-2xl font-black text-gray-800">{value}</div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">{sub}</div>
+                      <div className="text-2xl font-black text-news-text">{value}</div>
+                      <div className="text-[11px] text-news-muted mt-0.5">{sub}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Visitor trend chart */}
                 {analytics.visitChartData.length > 0 && (
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-5">
+                  <div className="bg-news-card rounded-2xl p-6 shadow-sm border border-news-border">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-news-muted mb-5">
                       Visitor Trend — Last 30 Days
                     </h3>
                     <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={analytics.visitChartData} barSize={10} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#14301C" />
                         <XAxis
                           dataKey="date"
-                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          tick={{ fontSize: 10, fill: '#7DA88A' }}
                           tickLine={false}
                           axisLine={false}
                           interval="preserveStartEnd"
                         />
                         <YAxis
-                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          tick={{ fontSize: 10, fill: '#7DA88A' }}
                           tickLine={false}
                           axisLine={false}
                           allowDecimals={false}
                         />
                         <Tooltip
-                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                          cursor={{ fill: '#fef9ec' }}
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #14301C', background: '#0A1A0D', color: '#EDF5EF' }}
+                          cursor={{ fill: 'rgba(224,158,43,0.08)' }}
                           formatter={(v: number) => [v.toLocaleString(), 'Visitors']}
                         />
                         <Bar dataKey="visits" fill="#E09E2B" radius={[4, 4, 0, 0]} />
@@ -476,8 +479,8 @@ export default function AdminDashboard({ user }: { user: User }) {
                 )}
 
                 {/* Category breakdown */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-5">
+                <div className="bg-news-card rounded-2xl p-6 shadow-sm border border-news-border">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-news-muted mb-5">
                     Category Breakdown
                   </h3>
                   <div className="space-y-3">
@@ -491,14 +494,14 @@ export default function AdminDashboard({ user }: { user: User }) {
                         const pct = (stats.articles / max) * 100;
                         return (
                           <div key={cat} className="flex items-center gap-3">
-                            <div className="w-28 text-xs font-bold text-gray-600 truncate shrink-0">{cat}</div>
-                            <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div className="w-28 text-xs font-bold text-news-muted truncate shrink-0">{cat}</div>
+                            <div className="flex-1 bg-news-border rounded-full h-2 overflow-hidden">
                               <div
                                 className="h-full bg-ashanti-gold rounded-full transition-all duration-500"
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
-                            <div className="text-[11px] text-gray-400 w-24 text-right shrink-0">
+                            <div className="text-[11px] text-news-muted w-24 text-right shrink-0">
                               {stats.articles} art · {stats.views} views
                             </div>
                           </div>
@@ -510,21 +513,21 @@ export default function AdminDashboard({ user }: { user: User }) {
                 {/* Top articles + period summaries */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Top 5 articles */}
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-5">Top Articles</h3>
+                  <div className="bg-news-card rounded-2xl p-6 shadow-sm border border-news-border">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-news-muted mb-5">Top Articles</h3>
                     <div className="space-y-4">
                       {analytics.topArticles.map((a: any, i: number) => (
                         <div key={a.id} className="flex items-center gap-3">
                           <span
                             className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
-                              i === 0 ? 'bg-ashanti-gold text-black' : 'bg-gray-100 text-gray-400'
+                              i === 0 ? 'bg-ashanti-gold text-black' : 'bg-brand-surface text-news-muted'
                             }`}
                           >
                             {i + 1}
                           </span>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-semibold truncate">{a.title}</div>
-                            <div className="text-[11px] text-gray-400">{a.category}</div>
+                            <div className="text-[11px] text-news-muted">{a.category}</div>
                           </div>
                           <span className="text-sm font-black text-ashanti-gold shrink-0">
                             {(a.views || 0).toLocaleString()}
@@ -532,7 +535,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                         </div>
                       ))}
                       {analytics.topArticles.length === 0 && (
-                        <p className="text-sm text-gray-400 text-center py-4">No articles yet.</p>
+                        <p className="text-sm text-news-muted text-center py-4">No articles yet.</p>
                       )}
                     </div>
                   </div>
@@ -543,8 +546,8 @@ export default function AdminDashboard({ user }: { user: User }) {
                       { label: 'Last 7 Days', views: analytics.weeklyViews, count: analytics.weeklyArticles },
                       { label: 'Last 30 Days', views: analytics.monthlyViews, count: analytics.monthlyArticles },
                     ].map(({ label, views, count }) => (
-                      <div key={label} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">{label}</h3>
+                      <div key={label} className="bg-news-card rounded-2xl p-6 shadow-sm border border-news-border">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-news-muted mb-4">{label}</h3>
                         <div className="grid grid-cols-3 gap-4">
                           {[
                             { stat: views.toLocaleString(), sub: 'Views' },
@@ -553,7 +556,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                           ].map(({ stat, sub }) => (
                             <div key={sub}>
                               <div className="text-xl font-black text-ashanti-gold">{stat}</div>
-                              <div className="text-[11px] text-gray-400 mt-0.5">{sub}</div>
+                              <div className="text-[11px] text-news-muted mt-0.5">{sub}</div>
                             </div>
                           ))}
                         </div>
@@ -563,16 +566,16 @@ export default function AdminDashboard({ user }: { user: User }) {
                 </div>
 
                 {/* Daily breakdown table */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">
+                <div className="bg-news-card rounded-2xl p-6 shadow-sm border border-news-border">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-news-muted mb-4">
                     Daily Breakdown — Last 7 Days
                   </h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead>
-                        <tr className="border-b border-gray-100">
+                        <tr className="border-b border-news-border">
                           {['Date', 'Articles Published', 'Views', 'Site Visits', 'Avg Views'].map(h => (
-                            <th key={h} className="py-2 pr-6 text-left text-[11px] uppercase tracking-widest text-gray-400 font-bold">
+                            <th key={h} className="py-2 pr-6 text-left text-[11px] uppercase tracking-widest text-news-muted font-bold">
                               {h}
                             </th>
                           ))}
@@ -580,7 +583,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                       </thead>
                       <tbody>
                         {(Object.entries(analytics.dailyStats) as Array<[string, { views: number; articles: number; visits: number }]>).map(([date, stat]) => (
-                          <tr key={date} className="border-b border-gray-50 hover:bg-gray-50">
+                          <tr key={date} className="border-b border-news-border hover:bg-brand-surface transition-colors">
                             <td className="py-2.5 pr-6 font-semibold text-sm">
                               {new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {
                                 weekday: 'short', day: 'numeric', month: 'short',
@@ -588,8 +591,8 @@ export default function AdminDashboard({ user }: { user: User }) {
                             </td>
                             <td className="py-2.5 pr-6">{stat.articles}</td>
                             <td className="py-2.5 pr-6 font-bold text-ashanti-gold">{stat.views}</td>
-                            <td className="py-2.5 pr-6 font-bold text-blue-500">{stat.visits}</td>
-                            <td className="py-2.5 text-gray-400">
+                            <td className="py-2.5 pr-6 font-bold text-ashanti-gold/70">{stat.visits}</td>
+                            <td className="py-2.5 text-news-muted">
                               {stat.articles > 0 ? Math.round(stat.views / stat.articles) : '—'}
                             </td>
                           </tr>
@@ -609,15 +612,15 @@ export default function AdminDashboard({ user }: { user: User }) {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold">
                 Authors{' '}
-                <span className="text-gray-400 font-normal text-sm">({authors.length})</span>
+                <span className="text-news-muted font-normal text-sm">({authors.length})</span>
               </h2>
-              <span className="text-xs text-gray-400 bg-white border border-gray-200 px-3 py-1.5 rounded-xl">
+              <span className="text-xs text-news-muted bg-news-card border border-news-border px-3 py-1.5 rounded-xl">
                 Manage authors in Settings
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {authors.map(author => (
-                <div key={author.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <div key={author.id} className="bg-news-card rounded-2xl p-5 border border-news-border shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full bg-ashanti-gold/15 flex items-center justify-center text-sm font-black text-ashanti-gold shrink-0">
                       {(author.name || 'U').charAt(0).toUpperCase()}
@@ -627,17 +630,17 @@ export default function AdminDashboard({ user }: { user: User }) {
                       <span
                         className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
                           author.role === 'admin'
-                            ? 'bg-black text-white'
-                            : 'bg-gray-100 text-gray-500'
+                            ? 'bg-ashanti-green text-white'
+                            : 'bg-brand-surface text-news-muted'
                         }`}
                       >
                         {author.role}
                       </span>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-400 truncate">{author.email}</div>
-                  <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Articles published</span>
+                  <div className="text-xs text-news-muted truncate">{author.email}</div>
+                  <div className="mt-3 pt-3 border-t border-news-border flex items-center justify-between">
+                    <span className="text-xs text-news-muted">Articles published</span>
                     <span className="text-sm font-black text-ashanti-gold">
                       {articleCountByAuthor[author.name] || 0}
                     </span>
@@ -645,7 +648,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                 </div>
               ))}
               {authors.length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-400 text-sm bg-white rounded-2xl border border-gray-100">
+                <div className="col-span-full text-center py-12 text-news-muted text-sm bg-news-card rounded-2xl border border-news-border">
                   No authors found.
                 </div>
               )}
@@ -659,21 +662,21 @@ export default function AdminDashboard({ user }: { user: User }) {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold">
                 Comments{' '}
-                <span className="text-gray-400 font-normal text-sm">({comments.length})</span>
+                <span className="text-news-muted font-normal text-sm">({comments.length})</span>
               </h2>
-              <button onClick={fetchComments} className="text-xs text-gray-400 hover:text-ashanti-gold transition-colors font-bold uppercase tracking-widest">
+              <button onClick={fetchComments} className="text-xs text-news-muted hover:text-ashanti-gold transition-colors font-bold uppercase tracking-widest">
                 Refresh
               </button>
             </div>
             {commentsLoading ? (
-              <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
+              <div className="flex items-center justify-center py-16 gap-3 text-news-muted">
                 <Loader2 size={18} className="animate-spin text-ashanti-gold" />
                 <span className="text-sm">Loading comments…</span>
               </div>
             ) : comments.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-                <MessageSquare size={32} className="text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">No comments to moderate.</p>
+              <div className="text-center py-16 bg-news-card rounded-2xl border border-news-border">
+                <MessageSquare size={32} className="text-news-border mx-auto mb-3" />
+                <p className="text-news-muted text-sm">No comments to moderate.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -681,44 +684,44 @@ export default function AdminDashboard({ user }: { user: User }) {
                   const isApproved = c.status === 'approved';
                   const isRejected = c.status === 'rejected';
                   return (
-                    <div key={c.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isRejected ? 'border-red-100 opacity-60' : isApproved ? 'border-green-100' : 'border-gray-100'}`}>
+                    <div key={c.id} className={`bg-news-card rounded-2xl border shadow-sm overflow-hidden ${isRejected ? 'border-red-900/40 opacity-60' : isApproved ? 'border-green-900/40' : 'border-news-border'}`}>
                       <div className="px-5 py-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="font-bold text-sm">{c.author_name || 'Anonymous'}</span>
-                              {c.author_email && <span className="text-xs text-gray-400">{c.author_email}</span>}
+                              {c.author_email && <span className="text-xs text-news-muted">{c.author_email}</span>}
                               <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                                isApproved ? 'bg-green-50 text-green-700' :
-                                isRejected ? 'bg-red-50 text-red-600' :
-                                'bg-yellow-50 text-yellow-700'
+                                isApproved ? 'bg-green-900/30 text-green-400' :
+                                isRejected ? 'bg-red-900/30 text-red-400' :
+                                'bg-ashanti-gold/10 text-ashanti-gold'
                               }`}>
                                 {c.status || 'Pending'}
                               </span>
                             </div>
                             {c.article_title && (
-                              <p className="text-[10px] text-gray-400 mb-2">On: <span className="font-semibold text-gray-600">{c.article_title}</span></p>
+                              <p className="text-[10px] text-news-muted mb-2">On: <span className="font-semibold text-news-text">{c.article_title}</span></p>
                             )}
-                            <p className="text-sm text-gray-700 leading-relaxed">{c.body || c.content || c.comment}</p>
-                            <p className="text-[10px] text-gray-400 mt-2">
+                            <p className="text-sm text-news-text leading-relaxed">{c.body || c.content || c.comment}</p>
+                            <p className="text-[10px] text-news-muted mt-2">
                               {c.created_at ? new Date(c.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {!isApproved && (
                               <button onClick={() => handleCommentAction(c.id, 'approve')}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 rounded-xl text-[11px] font-bold hover:bg-green-100 transition-colors border border-green-200">
+                                className="flex items-center gap-1 px-3 py-1.5 bg-green-900/20 text-green-400 rounded-xl text-[11px] font-bold hover:bg-green-900/40 transition-colors border border-green-900/40">
                                 <CheckCircle size={12} /> Approve
                               </button>
                             )}
                             {!isRejected && (
                               <button onClick={() => handleCommentAction(c.id, 'reject')}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-xl text-[11px] font-bold hover:bg-yellow-100 transition-colors border border-yellow-200">
+                                className="flex items-center gap-1 px-3 py-1.5 bg-ashanti-gold/10 text-ashanti-gold rounded-xl text-[11px] font-bold hover:bg-ashanti-gold/20 transition-colors border border-ashanti-gold/20">
                                 <AlertTriangle size={12} /> Reject
                               </button>
                             )}
                             <button onClick={() => handleDeleteComment(c.id)}
-                              className="p-1.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors border border-transparent hover:border-red-200">
+                              className="p-1.5 rounded-xl hover:bg-red-900/20 text-news-muted hover:text-red-400 transition-colors border border-transparent hover:border-red-900/30">
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -744,38 +747,38 @@ export default function AdminDashboard({ user }: { user: User }) {
               )}
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-              <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Current Status</p>
-              <div className={`flex items-start gap-3 p-4 rounded-xl border ${breakingActive && breakingText ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
-                <Zap size={16} className={breakingActive && breakingText ? 'text-red-500 shrink-0 mt-0.5' : 'text-gray-400 shrink-0 mt-0.5'} />
+            <div className="bg-news-card rounded-2xl border border-news-border shadow-sm p-6 mb-6">
+              <p className="text-xs font-black uppercase tracking-widest text-news-muted mb-4">Current Status</p>
+              <div className={`flex items-start gap-3 p-4 rounded-xl border ${breakingActive && breakingText ? 'bg-red-900/20 border-red-900/40' : 'bg-brand-surface border-news-border'}`}>
+                <Zap size={16} className={breakingActive && breakingText ? 'text-red-400 shrink-0 mt-0.5' : 'text-news-muted shrink-0 mt-0.5'} />
                 <div>
-                  <p className="text-xs font-bold text-gray-500 mb-1">{breakingActive && breakingText ? 'LIVE — Showing to all readers' : 'Inactive — Not showing'}</p>
-                  <p className="text-sm text-gray-700">{breakingText || <span className="text-gray-400 italic">No breaking news set</span>}</p>
+                  <p className="text-xs font-bold text-news-muted mb-1">{breakingActive && breakingText ? 'LIVE — Showing to all readers' : 'Inactive — Not showing'}</p>
+                  <p className="text-sm text-news-text">{breakingText || <span className="text-news-muted italic">No breaking news set</span>}</p>
                 </div>
               </div>
             </div>
 
-            <form onSubmit={handleSaveBreakingNews} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+            <form onSubmit={handleSaveBreakingNews} className="bg-news-card rounded-2xl border border-news-border shadow-sm p-6 space-y-5">
               <div>
-                <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block mb-1.5">Breaking News Text</label>
+                <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">Breaking News Text</label>
                 <textarea
                   value={breakingText}
                   onChange={e => setBreakingText(e.target.value)}
                   rows={3}
                   placeholder="Enter breaking news headline…"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-ashanti-gold transition-colors resize-none"
+                  className="w-full border border-news-border rounded-xl px-4 py-3 text-sm font-semibold bg-brand-surface text-news-text placeholder:text-news-muted focus:outline-none focus:border-ashanti-gold transition-colors resize-none"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">{breakingText.length} characters</p>
+                <p className="text-[10px] text-news-muted mt-1">{breakingText.length} characters</p>
               </div>
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setBreakingActive(a => !a)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${breakingActive ? 'bg-red-500' : 'bg-gray-200'}`}>
+                  className={`relative w-10 h-5 rounded-full transition-colors ${breakingActive ? 'bg-red-500' : 'bg-news-border'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${breakingActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
-                <span className="text-sm font-bold text-gray-700">{breakingActive ? 'Active — Showing to readers' : 'Inactive'}</span>
+                <span className="text-sm font-bold text-news-text">{breakingActive ? 'Active — Showing to readers' : 'Inactive'}</span>
               </div>
               {breakingStatus && (
-                <p className={`text-xs font-bold ${breakingStatus.startsWith('Failed') ? 'text-red-600' : 'text-green-600'}`}>
+                <p className={`text-xs font-bold ${breakingStatus.startsWith('Failed') ? 'text-red-400' : 'text-green-400'}`}>
                   {breakingStatus}
                 </p>
               )}
@@ -786,7 +789,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                   {breakingLoading ? 'Saving…' : 'Save & Publish'}
                 </button>
                 <button type="button" onClick={handleClearBreakingNews}
-                  className="flex items-center gap-2 px-5 py-2 bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-gray-200 transition-colors">
+                  className="flex items-center gap-2 px-5 py-2 bg-brand-surface text-news-muted font-black text-xs uppercase tracking-widest rounded-xl hover:bg-news-border transition-colors border border-news-border">
                   <XCircle size={13} /> Clear
                 </button>
               </div>
@@ -799,25 +802,25 @@ export default function AdminDashboard({ user }: { user: User }) {
           <div className="space-y-8">
 
             {/* ── Authors management ─────────────────────────── */}
-            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
+            <section className="bg-news-card rounded-2xl border border-news-border shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-news-border">
                 <h2 className="font-bold text-base">Authors</h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-news-muted mt-0.5">
                   Edit name or role, or remove author access.
                 </p>
               </div>
 
               <div className="px-6 pt-4">
                 {/* Info banner */}
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-2.5">
-                  <Info size={14} className="text-blue-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-600 leading-relaxed">
+                <div className="bg-ashanti-green/20 border border-ashanti-gold/20 rounded-xl p-3 flex gap-2.5">
+                  <Info size={14} className="text-ashanti-gold shrink-0 mt-0.5" />
+                  <p className="text-xs text-news-text leading-relaxed">
                     To add a new author, have them sign in with their email address. Their account will appear here automatically after first login.
                   </p>
                 </div>
 
                 {authorStatus && (
-                  <div className="mt-3 text-xs font-bold text-green-700 bg-green-50 border border-green-100 rounded-xl px-4 py-2.5">
+                  <div className="mt-3 text-xs font-bold text-green-400 bg-green-900/20 border border-green-900/40 rounded-xl px-4 py-2.5">
                     {authorStatus}
                   </div>
                 )}
@@ -825,28 +828,28 @@ export default function AdminDashboard({ user }: { user: User }) {
 
               <div className="p-6 space-y-3">
                 {authors.map(author => (
-                  <div key={author.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                  <div key={author.id} className="border border-news-border rounded-xl overflow-hidden">
                     {editingAuthor?.id === author.id ? (
                       /* Inline edit */
-                      <div className="p-4 bg-gray-50 space-y-4">
+                      <div className="p-4 bg-brand-surface space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block mb-1.5">
+                            <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">
                               Name
                             </label>
                             <input
                               type="text"
-                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-ashanti-gold transition-colors"
+                              className="w-full border border-news-border rounded-xl px-3 py-2 text-sm font-semibold bg-news-card text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
                               value={editAuthorForm.name}
                               onChange={e => setEditAuthorForm(f => ({ ...f, name: e.target.value }))}
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block mb-1.5">
+                            <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">
                               Role
                             </label>
                             <select
-                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-ashanti-gold appearance-none cursor-pointer"
+                              className="w-full border border-news-border rounded-xl px-3 py-2 text-sm font-semibold bg-news-card text-news-text focus:outline-none focus:border-ashanti-gold appearance-none cursor-pointer"
                               value={editAuthorForm.role}
                               onChange={e => setEditAuthorForm(f => ({ ...f, role: e.target.value }))}
                             >
@@ -858,7 +861,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={() => setEditingAuthor(null)}
-                            className="px-4 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                            className="px-4 py-1.5 text-xs font-bold text-news-muted bg-news-card border border-news-border rounded-xl hover:bg-brand-surface transition-colors"
                           >
                             Cancel
                           </button>
@@ -879,13 +882,13 @@ export default function AdminDashboard({ user }: { user: User }) {
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-bold truncate">{author.name}</div>
-                            <div className="text-xs text-gray-400 truncate">{author.email}</div>
+                            <div className="text-xs text-news-muted truncate">{author.email}</div>
                           </div>
                           <span
                             className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0 ${
                               author.role === 'admin'
-                                ? 'bg-black text-white'
-                                : 'bg-gray-100 text-gray-500'
+                                ? 'bg-ashanti-green text-white'
+                                : 'bg-brand-surface text-news-muted'
                             }`}
                           >
                             {author.role}
@@ -894,7 +897,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                         <div className="flex items-center gap-1 shrink-0">
                           {deletingAuthorId === author.id ? (
                             <>
-                              <span className="text-xs text-red-600 font-bold mr-1">Remove?</span>
+                              <span className="text-xs text-red-400 font-bold mr-1">Remove?</span>
                               <button
                                 onClick={() => handleDeleteAuthor(author.id)}
                                 className="px-2.5 py-1 text-xs font-bold text-white bg-red-500 rounded-lg hover:bg-red-600"
@@ -903,7 +906,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                               </button>
                               <button
                                 onClick={() => setDeletingAuthorId(null)}
-                                className="px-2.5 py-1 text-xs font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                className="px-2.5 py-1 text-xs font-bold text-news-muted bg-brand-surface rounded-lg hover:bg-news-border transition-colors"
                               >
                                 No
                               </button>
@@ -917,7 +920,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                                     setEditAuthorForm({ name: author.name || '', role: author.role });
                                     setAuthorStatus('');
                                   }}
-                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-black transition-colors"
+                                  className="p-1.5 rounded-lg hover:bg-brand-surface text-news-muted hover:text-news-text transition-colors"
                                   title="Edit author"
                                 >
                                   <Edit2 size={14} />
@@ -925,7 +928,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                                 {author.id !== user.id && (
                                   <button
                                     onClick={() => { setDeletingAuthorId(author.id); setAuthorStatus(''); }}
-                                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                    className="p-1.5 rounded-lg hover:bg-red-900/20 text-news-muted hover:text-red-400 transition-colors"
                                     title="Remove author"
                                   >
                                     <Trash2 size={14} />
@@ -940,16 +943,16 @@ export default function AdminDashboard({ user }: { user: User }) {
                   </div>
                 ))}
                 {authors.length === 0 && (
-                  <div className="text-center py-8 text-gray-400 text-sm">No authors found.</div>
+                  <div className="text-center py-8 text-news-muted text-sm">No authors found.</div>
                 )}
               </div>
             </section>
 
             {/* ── General settings ───────────────────────────── */}
-            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
+            <section className="bg-news-card rounded-2xl border border-news-border shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-news-border">
                 <h2 className="font-bold text-base">General</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Site-wide configuration.</p>
+                <p className="text-xs text-news-muted mt-0.5">Site-wide configuration.</p>
               </div>
               <div className="p-6">
                 <form
@@ -961,12 +964,12 @@ export default function AdminDashboard({ user }: { user: User }) {
                   className="max-w-sm space-y-5"
                 >
                   <div>
-                    <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block mb-1.5">
+                    <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">
                       Site Title
                     </label>
                     <input
                       type="text"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-ashanti-gold transition-colors"
+                      className="w-full border border-news-border rounded-xl px-4 py-2.5 text-sm font-semibold bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
                       value={siteTitle}
                       onChange={e => setSiteTitle(e.target.value)}
                     />
@@ -978,7 +981,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                     Save
                   </button>
                   {settingsStatus && (
-                    <p className="text-xs font-bold text-green-600">{settingsStatus}</p>
+                    <p className="text-xs font-bold text-green-400">{settingsStatus}</p>
                   )}
                 </form>
               </div>

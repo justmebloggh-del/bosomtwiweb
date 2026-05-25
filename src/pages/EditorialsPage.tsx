@@ -34,7 +34,7 @@ export default function EditorialsPage({ articles, onArticleClick, loading }: Ed
         title="Editorials & Opinion"
         badge="Perspectives"
         description="Informed analysis, bold opinions, and thoughtful commentary on the issues shaping Ashanti and Ghana."
-        count={editorials.length}
+        count={`${editorials.length} editorials`}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">

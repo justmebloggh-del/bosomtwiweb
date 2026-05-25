@@ -83,7 +83,7 @@ export default function PodcastsPage() {
         title="Bosomtwi Podcasts"
         badge="Audio Journalism"
         description="Deep conversations, analysis, and stories told in audio. Listen anywhere, anytime."
-        count={EPISODES.length}
+        count={`${EPISODES.length} episodes`}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">

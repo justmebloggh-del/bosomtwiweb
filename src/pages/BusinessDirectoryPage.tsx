@@ -57,7 +57,7 @@ export default function BusinessDirectoryPage() {
         title="Business Directory"
         badge="Ashanti Businesses"
         description="Discover and support local businesses across the Ashanti Region. From startups to established enterprises."
-        count={BUSINESSES.length}
+        count={`${BUSINESSES.length} businesses`}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">

@@ -83,7 +83,7 @@ export default function FactCheckPage() {
         title="Fact Check"
         badge="Truth in Journalism"
         description="We investigate viral claims, political statements, and social media rumours so you don't have to."
-        count={FACT_CHECKS.length}
+        count={`${FACT_CHECKS.length} fact checks`}
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">

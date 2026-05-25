@@ -154,7 +154,7 @@ export default function CareersPage() {
         title="Careers at Bosomtwi Web"
         badge="Join Our Team"
         description="Help us tell the stories that matter. We're looking for passionate journalists, creatives, and technologists."
-        count={ROLES.length}
+        count={`${ROLES.length} open roles`}
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
