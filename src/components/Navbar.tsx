@@ -82,6 +82,7 @@ function useDateTime() {
 export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, onNavigate, onSearchOpen, onAdminClick }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [newsOpen, setNewsOpen] = useState(false);
   const [navBottom, setNavBottom] = useState(134);
   const navRef = useRef<HTMLElement>(null);
   const dt = useDateTime();
@@ -96,7 +97,7 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
     return () => { window.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
   }, []);
 
-  const close = () => { setMenuOpen(false); setMoreOpen(false); };
+  const close = () => { setMenuOpen(false); setMoreOpen(false); setNewsOpen(false); };
 
   const dateStr = dt.toLocaleDateString('en-GH', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -178,12 +179,52 @@ export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, 
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center flex-1 h-full overflow-x-auto gap-0">
-            {CATEGORIES.slice(0, 7).map(({ label, cat }) => (
+
+            {/* News dropdown */}
+            <div className="relative h-full flex items-center">
+              <button
+                onClick={() => setNewsOpen(v => !v)}
+                className={`flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] font-bold px-2.5 h-full border-b-2 transition-all ${newsOpen ? 'text-ashanti-gold border-ashanti-gold' : 'text-news-text/55 border-transparent hover:text-ashanti-gold hover:border-ashanti-gold'}`}
+              >
+                News <ChevronDown size={11} className={`transition-transform duration-200 ${newsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {newsOpen && (
+                  <>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      onClick={() => setNewsOpen(false)} className="fixed inset-0 z-[49] bg-black/10" />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.18 }}
+                      className="absolute left-0 top-full z-50 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-news-border overflow-hidden"
+                    >
+                      {[
+                        { label: 'Latest News', cat: '', desc: 'All latest stories' },
+                        { label: 'Manhyia',     cat: 'Manhyia',     desc: 'Palace & kingdom news' },
+                        { label: 'Local',        cat: 'Local',        desc: 'Community stories' },
+                        { label: 'News',         cat: 'News',         desc: 'General news' },
+                        { label: 'International',cat: 'International',desc: 'World news' },
+                      ].map(({ label, cat, desc }) => (
+                        <button key={label} onClick={() => { onCategoryClick(cat); setNewsOpen(false); }}
+                          className="w-full text-left px-4 py-3 hover:bg-ashanti-gold/5 border-b border-news-border last:border-0 group transition-colors">
+                          <p className="text-[11px] font-black uppercase tracking-widest text-news-text group-hover:text-ashanti-gold transition-colors">{label}</p>
+                          <p className="text-[10px] text-news-muted mt-0.5">{desc}</p>
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Remaining categories (skip index 0 = News, already handled above) */}
+            {CATEGORIES.slice(1, 7).map(({ label, cat }) => (
               <button key={cat} onClick={() => onCategoryClick(cat)}
                 className="text-[10px] uppercase tracking-[0.12em] font-bold text-news-text/55 hover:text-ashanti-gold px-2.5 h-full flex items-center border-b-2 border-transparent hover:border-ashanti-gold transition-all whitespace-nowrap">
                 {label}
               </button>
             ))}
+
             {/* More mega-menu */}
             <div className="relative h-full flex items-center">
               <button onClick={() => setMoreOpen(v => !v)}
