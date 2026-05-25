@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PublishModal from '../components/PublishModal';
 import { supabase } from '../lib/supabase';
 import { User, Article } from '../types';
 import {
   Eye, FileText, TrendingUp, Calendar, Edit2, Trash2, Info, Globe, Users2,
-  MessageSquare, CheckCircle, XCircle, Zap, Loader2, AlertTriangle,
+  MessageSquare, CheckCircle, XCircle, Zap, Loader2, AlertTriangle, Upload, X,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -85,6 +85,9 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [newAdForm, setNewAdForm] = useState({ brand: '', tagline: '', cta_text: 'Learn More', cta_url: '', logo: '📢', accent_color: '#E09E2B', placement: 'leaderboard', package_tier: 'Bronze' });
   const [adSubmitting, setAdSubmitting] = useState(false);
   const [adFormStatus, setAdFormStatus] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState('');
+  const logoFileRef = useRef<HTMLInputElement>(null);
   const [adPackages, setAdPackages] = useState([
     { name: 'Bronze',           price: 'GH₵500',   period: '/month',   popular: false },
     { name: 'Silver',           price: 'GH₵1,500', period: '/month',   popular: false },
@@ -1002,12 +1005,22 @@ export default function AdminDashboard({ user }: { user: User }) {
                   e.preventDefault();
                   if (!newAdForm.brand.trim()) return;
                   setAdSubmitting(true); setAdFormStatus('');
+                  let logoValue = newAdForm.logo.trim() || '📢';
+                  if (logoFile) {
+                    const ext = logoFile.name.split('.').pop();
+                    const path = `ads/logo-${Date.now()}.${ext}`;
+                    const { error: upErr } = await supabase.storage.from('story-photos').upload(path, logoFile, { upsert: true });
+                    if (!upErr) {
+                      const { data: { publicUrl } } = supabase.storage.from('story-photos').getPublicUrl(path);
+                      logoValue = publicUrl;
+                    }
+                  }
                   const { error } = await supabase.from('live_ads').insert({
                     brand:        newAdForm.brand.trim(),
                     tagline:      newAdForm.tagline.trim(),
                     cta_text:     newAdForm.cta_text.trim() || 'Learn More',
                     cta_url:      newAdForm.cta_url.trim() || '#',
-                    logo:         newAdForm.logo.trim() || '📢',
+                    logo:         logoValue,
                     accent_color: newAdForm.accent_color,
                     placement:    newAdForm.placement,
                     package_tier: newAdForm.package_tier,
@@ -1019,6 +1032,8 @@ export default function AdminDashboard({ user }: { user: User }) {
                   else {
                     setAdFormStatus('✓ Ad posted and live!');
                     setNewAdForm({ brand: '', tagline: '', cta_text: 'Learn More', cta_url: '', logo: '📢', accent_color: '#E09E2B', placement: 'leaderboard', package_tier: 'Bronze' });
+                    setLogoFile(null); setLogoPreview('');
+                    if (logoFileRef.current) logoFileRef.current.value = '';
                     fetchLiveAds();
                     setTimeout(() => setAdFormStatus(''), 3000);
                   }
@@ -1050,10 +1065,42 @@ export default function AdminDashboard({ user }: { user: User }) {
                       className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Logo Emoji</label>
-                    <input value={newAdForm.logo} onChange={e => setNewAdForm(f => ({ ...f, logo: e.target.value }))}
-                      placeholder="📢"
-                      className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Logo — Image or Emoji</label>
+                    <input ref={logoFileRef} type="file" accept="image/*" id="ad-logo-input" className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setLogoFile(file);
+                        setLogoPreview(URL.createObjectURL(file));
+                      }} />
+                    {logoPreview ? (
+                      <div className="flex items-center gap-3 p-2 bg-brand-surface border border-news-border rounded-xl">
+                        <img src={logoPreview} alt="Logo preview" className="w-12 h-12 rounded-lg object-contain border border-news-border bg-white" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-news-text truncate">{logoFile?.name}</p>
+                          <p className="text-[10px] text-news-muted">Logo image selected</p>
+                        </div>
+                        <button type="button"
+                          onClick={() => { setLogoFile(null); setLogoPreview(''); if (logoFileRef.current) logoFileRef.current.value = ''; }}
+                          className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors shrink-0">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label htmlFor="ad-logo-input"
+                          className="flex items-center gap-2 w-full px-4 py-2.5 bg-brand-surface border border-dashed border-news-border rounded-xl cursor-pointer hover:border-ashanti-gold hover:bg-ashanti-gold/5 transition-all group text-sm text-news-muted">
+                          <Upload size={14} className="group-hover:text-ashanti-gold transition-colors shrink-0" />
+                          <span className="group-hover:text-ashanti-gold transition-colors text-[11px] font-bold uppercase tracking-widest">Upload image logo</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-news-muted uppercase tracking-widest font-bold">or emoji:</span>
+                          <input value={newAdForm.logo} onChange={e => setNewAdForm(f => ({ ...f, logo: e.target.value }))}
+                            placeholder="📢"
+                            className="flex-1 bg-brand-surface border border-news-border rounded-xl px-3 py-2 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-1.5">Accent Colour</label>
@@ -1089,7 +1136,9 @@ export default function AdminDashboard({ user }: { user: User }) {
                     <p className="text-[9px] font-black uppercase tracking-widest text-news-muted px-4 py-2 bg-brand-surface border-b border-news-border">Preview</p>
                     <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-50 to-yellow-50">
                       <div className="flex items-center gap-4">
-                        <span className="text-3xl">{newAdForm.logo || '📢'}</span>
+                        {logoPreview
+                          ? <img src={logoPreview} alt="logo" className="w-10 h-10 rounded-lg object-contain border border-gray-200 bg-white" />
+                          : <span className="text-3xl">{newAdForm.logo || '📢'}</span>}
                         <div>
                           <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Sponsored</p>
                           <p className="font-heading font-black text-gray-800">{newAdForm.brand}</p>
