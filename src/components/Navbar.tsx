@@ -152,7 +152,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
               </div>
             ) : (
               <button onClick={onLoginClick}
-                className="px-3 h-6 bg-white text-ashanti-green text-[9px] font-black uppercase tracking-widest rounded hover:bg-ashanti-gold hover:text-black transition-all ml-1">
+                className="px-3 h-6 bg-ashanti-gold text-black text-[9px] font-black uppercase tracking-widest rounded hover:bg-white transition-all ml-1">
                 Login
               </button>
             )}
@@ -169,7 +169,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
 
           {/* Mobile hamburger */}
           <button onClick={() => setMenuOpen(true)}
-            className="flex md:hidden p-2 text-news-text/50 hover:text-ashanti-green transition-colors shrink-0 rounded-lg hover:bg-brand-surface">
+            className="flex md:hidden p-2 text-news-text/50 hover:text-ashanti-gold transition-colors shrink-0 rounded-lg hover:bg-brand-surface">
             <Menu size={22} />
           </button>
 
@@ -182,14 +182,14 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
           <div className="hidden md:flex items-center flex-1 h-full overflow-x-auto gap-0">
             {CATEGORIES.slice(0, 7).map(({ label, cat }) => (
               <button key={cat} onClick={() => onCategoryClick(cat)}
-                className="text-[10px] uppercase tracking-[0.12em] font-bold text-news-text/60 hover:text-ashanti-green px-2.5 h-full flex items-center border-b-2 border-transparent hover:border-ashanti-green transition-all whitespace-nowrap">
+                className="text-[10px] uppercase tracking-[0.12em] font-bold text-news-text/55 hover:text-ashanti-gold px-2.5 h-full flex items-center border-b-2 border-transparent hover:border-ashanti-gold transition-all whitespace-nowrap">
                 {label}
               </button>
             ))}
             {/* More mega-menu */}
             <div className="relative h-full flex items-center">
               <button onClick={() => setMoreOpen(v => !v)}
-                className={`flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] font-bold px-2.5 h-full border-b-2 transition-all ${moreOpen ? 'text-ashanti-green border-ashanti-green' : 'text-news-text/60 border-transparent hover:text-ashanti-green hover:border-ashanti-green'}`}>
+                className={`flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] font-bold px-2.5 h-full border-b-2 transition-all ${moreOpen ? 'text-ashanti-gold border-ashanti-gold' : 'text-news-text/55 border-transparent hover:text-ashanti-gold hover:border-ashanti-gold'}`}>
                 More <ChevronDown size={11} className={`transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -368,13 +368,13 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
           <div className="ml-auto flex items-center gap-1 shrink-0">
             {/* Search */}
             <button onClick={onSearchOpen} aria-label="Search"
-              className="p-2 text-news-text/40 hover:text-ashanti-green transition-colors rounded-lg hover:bg-brand-surface">
+              className="p-2 text-news-text/40 hover:text-ashanti-gold transition-colors rounded-lg hover:bg-brand-surface">
               <Search size={18} />
             </button>
 
             {/* Dark mode toggle */}
             <button onClick={onDarkToggle} aria-label="Toggle theme"
-              className="p-2 text-news-text/40 hover:text-ashanti-green transition-colors rounded-lg hover:bg-brand-surface">
+              className="p-2 text-news-text/40 hover:text-ashanti-gold transition-colors rounded-lg hover:bg-brand-surface">
               {dark ? <Sun size={17} /> : <Moon size={17} />}
             </button>
 
@@ -402,7 +402,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
             { label: 'About Us',      page: 'about' },
           ].map(({ label, page }) => (
             <button key={label} onClick={() => onNavigate(page)}
-              className="text-[9px] uppercase tracking-widest font-bold text-white/60 hover:text-white transition-colors whitespace-nowrap">
+              className="text-[9px] uppercase tracking-widest font-bold text-white/50 hover:text-ashanti-gold transition-colors whitespace-nowrap">
               {label}
             </button>
           ))}
@@ -443,11 +443,11 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
 
               <div className="flex-1 overflow-y-auto py-4 px-4">
                 {/* Quick sections */}
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-ashanti-green mb-2 px-1">Quick Access</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-ashanti-gold mb-2 px-1">Quick Access</p>
                 <div className="grid grid-cols-2 gap-2 mb-6">
                   {QUICK_LINKS.map(({ id, label, Icon, live }) => (
                     <button key={id} onClick={() => { onNavigate(id); close(); }}
-                      className="flex items-center gap-2 py-3 px-3 rounded-xl text-sm font-bold text-news-text/60 hover:text-ashanti-green bg-brand-surface hover:bg-brand-surface/80 transition-colors">
+                      className="flex items-center gap-2 py-3 px-3 rounded-xl text-sm font-bold text-news-text/60 hover:text-ashanti-gold bg-brand-surface hover:bg-brand-surface/80 transition-colors">
                       <Icon size={15} />
                       <span>{label}</span>
                       {live && <motion.span animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
@@ -461,9 +461,9 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
                 <div className="flex flex-col gap-0.5 mb-6">
                   {CATEGORIES.map(({ label, cat }) => (
                     <button key={cat} onClick={() => { onCategoryClick(cat); close(); }}
-                      className="flex items-center justify-between py-3 px-2 text-[17px] font-heading font-bold uppercase tracking-tight text-news-text hover:text-ashanti-green group transition-colors">
+                      className="flex items-center justify-between py-3 px-2 text-[17px] font-heading font-bold uppercase tracking-tight text-news-text hover:text-ashanti-gold group transition-colors">
                       <span>{label}</span>
-                      <ChevronRight size={14} className="text-news-text/20 group-hover:text-ashanti-green group-hover:translate-x-1 transition-all" />
+                      <ChevronRight size={14} className="text-news-text/20 group-hover:text-ashanti-gold group-hover:translate-x-1 transition-all" />
                     </button>
                   ))}
                 </div>
@@ -484,7 +484,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
                     { label: 'Terms of Service',  page: 'terms' },
                   ].map(({ label, page }) => (
                     <button key={page} onClick={() => { onNavigate(page); close(); }}
-                      className="block w-full text-left py-2.5 px-2 text-sm font-bold uppercase tracking-widest text-news-text/40 hover:text-ashanti-green transition-colors">
+                      className="block w-full text-left py-2.5 px-2 text-sm font-bold uppercase tracking-widest text-news-text/30 hover:text-ashanti-gold transition-colors">
                       {label}
                     </button>
                   ))}
@@ -507,7 +507,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
               {!user && (
                 <div className="p-4 border-t border-news-border">
                   <button onClick={() => { onLoginClick(); close(); }}
-                    className="w-full py-3.5 bg-ashanti-green text-white font-black uppercase tracking-widest rounded-xl hover:bg-ashanti-gold hover:text-black transition-all text-sm">
+                    className="w-full py-3.5 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl hover:bg-news-text hover:text-ashanti-gold transition-all text-sm">
                     Journalist Login
                   </button>
                 </div>

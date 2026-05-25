@@ -8,33 +8,33 @@
   --font-mono: ui-monospace, SFMono-Regular, monospace;
 
   /* Brand palette */
-  --color-brand-primary:   #0D3B1A;
-  --color-brand-secondary: #E09E2B;
+  --color-brand-primary:   #E09E2B;
+  --color-brand-secondary: #0D3B1A;
   --color-brand-accent:    #1a5c2e;
-  --color-brand-surface:   #F0F7F2;
+  --color-brand-surface:   #F3F8F4;
 
   /* Semantic aliases */
   --color-ashanti-gold:    #E09E2B;
   --color-ashanti-green:   #0D3B1A;
   --color-news-bg:         #FFFFFF;
-  --color-news-text:       #0D3B1A;
-  --color-news-muted:      #4A7A5C;
-  --color-news-border:     #C8E0D0;
+  --color-news-text:       #0A1A0D;
+  --color-news-muted:      #4A6455;
+  --color-news-border:     #D0E4D5;
   --color-news-card:       #FFFFFF;
 
   /* Override Tailwind black */
-  --color-black: #0D3B1A;
+  --color-black: #0A1A0D;
 }
 
 /* ── Dark Mode Overrides ────────────────────────────────────── */
 .dark {
-  --color-news-bg:       #071E0E;
-  --color-news-text:     #FFFFFF;
-  --color-news-muted:    #8FBD9B;
-  --color-news-border:   #1C4A2C;
-  --color-news-card:     #0D3B1A;
-  --color-brand-surface: #061509;
-  --color-black:         #FFFFFF;
+  --color-news-bg:       #061009;
+  --color-news-text:     #EDF5EF;
+  --color-news-muted:    #7DA88A;
+  --color-news-border:   #14301C;
+  --color-news-card:     #0A1A0D;
+  --color-brand-surface: #081209;
+  --color-black:         #EDF5EF;
 }
 
 /* ── Dark variant for Tailwind v4 ───────────────────────────── */
@@ -210,8 +210,8 @@
 /* ── Kente diamond pattern overlay ─────────────────────────── */
 .kente-pattern-bg {
   background-image:
-    repeating-linear-gradient(45deg,  rgba(13,59,26,0.07)  0px, rgba(13,59,26,0.07)  1px, transparent 1px, transparent 12px),
-    repeating-linear-gradient(-45deg, rgba(224,158,43,0.06) 0px, rgba(224,158,43,0.06) 1px, transparent 1px, transparent 12px);
+    repeating-linear-gradient(45deg,  rgba(224,158,43,0.08) 0px, rgba(224,158,43,0.08) 1px, transparent 1px, transparent 12px),
+    repeating-linear-gradient(-45deg, rgba(13,59,26,0.06)   0px, rgba(13,59,26,0.06)   1px, transparent 1px, transparent 12px);
 }
 
 /* ── Section divider with kente colors ──────────────────────── */

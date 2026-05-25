@@ -121,7 +121,7 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               {CATEGORIES.map(cat => (
                 <li key={cat}>
                   <button onClick={() => onCategoryClick?.(cat)}
-                    className="text-sm text-white/40 hover:text-white transition-colors font-medium">
+                    className="text-sm text-white/40 hover:text-ashanti-gold transition-colors font-medium">
                     {cat}
                   </button>
                 </li>
@@ -136,7 +136,7 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               {QUICK_LINKS.map(({ label, page }) => (
                 <li key={page}>
                   <button onClick={() => onNavigate?.(page)}
-                    className="text-sm text-white/40 hover:text-white transition-colors font-medium">
+                    className="text-sm text-white/40 hover:text-ashanti-gold transition-colors font-medium">
                     {label}
                   </button>
                 </li>
@@ -153,7 +153,7 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               ].map(({ label, page }) => (
                 <li key={page}>
                   <button onClick={() => onNavigate?.(page)}
-                    className="text-sm text-white/40 hover:text-white transition-colors font-medium">
+                    className="text-sm text-white/40 hover:text-ashanti-gold transition-colors font-medium">
                     {label}
                   </button>
                 </li>
@@ -176,7 +176,7 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               <li className="flex items-center gap-3 text-sm text-white/40">
                 <Mail size={14} className="text-ashanti-gold shrink-0" />
                 <a href="mailto:bosomtwiweb@gmail.com"
-                  className="hover:text-white transition-colors">
+                  className="hover:text-ashanti-gold transition-colors">
                   bosomtwiweb@gmail.com
                 </a>
               </li>
@@ -212,9 +212,9 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
             "YOUR VOICE. OUR MISSION."
           </p>
           <div className="flex gap-5">
-            <button onClick={() => onNavigate?.('privacy')} className="hover:text-white transition-colors">Privacy</button>
-            <button onClick={() => onNavigate?.('terms')} className="hover:text-white transition-colors">Terms</button>
-            <button onClick={() => onNavigate?.('advertise')} className="hover:text-white transition-colors">Advertise</button>
+            <button onClick={() => onNavigate?.('privacy')} className="hover:text-ashanti-gold transition-colors">Privacy</button>
+            <button onClick={() => onNavigate?.('terms')} className="hover:text-ashanti-gold transition-colors">Terms</button>
+            <button onClick={() => onNavigate?.('advertise')} className="hover:text-ashanti-gold transition-colors">Advertise</button>
           </div>
         </div>
       </div>

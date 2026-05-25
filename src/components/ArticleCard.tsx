@@ -19,13 +19,13 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
   // ── Cinematic (full-bleed overlay) ──────────────────────────
   if (variant === 'cinematic') {
     return (
-      <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-brand-surface rounded-2xl">
+      <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-gray-200 rounded-2xl">
         <img src={article.image} alt={article.title}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-70" />
         <div className="news-banner-overlay absolute inset-0 rounded-2xl" />
         <div className="absolute bottom-0 p-8 w-full">
           <div className="flex items-center gap-3 mb-4">
-            <span className="cat-pill bg-ashanti-green text-white">{article.category}</span>
+            <span className="cat-pill bg-ashanti-gold text-black">{article.category}</span>
             {(article as any).status === 'published' && (
               <span className="cat-pill bg-red-600 text-white flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />LIVE
@@ -47,12 +47,12 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
   // ── Large ────────────────────────────────────────────────────
   if (variant === 'large') {
     return (
-      <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-brand-surface rounded-2xl">
+      <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-gray-200 rounded-2xl">
         <img src={article.image} alt={article.title}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-65" />
         <div className="news-banner-overlay absolute inset-0 rounded-2xl" />
         <div className="absolute bottom-0 p-8 w-full">
-          <span className="cat-pill bg-ashanti-green text-white mb-4 inline-block">
+          <span className="cat-pill bg-ashanti-gold text-black mb-4 inline-block">
             Top Story · {article.category}
           </span>
           <h2 className="font-heading text-3xl md:text-5xl font-bold leading-tight text-white group-hover:text-ashanti-gold transition-colors mb-3 line-clamp-3">
@@ -107,8 +107,8 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
 
   // ── Medium (default) — premium card ─────────────────────────
   return (
-    <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border hover:border-ashanti-green/50 hover:shadow-xl transition-all duration-400 group cursor-pointer flex flex-col h-full">
-      <div className="relative overflow-hidden bg-brand-surface" style={{ aspectRatio: '16/9' }}>
+    <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border hover:border-ashanti-gold/40 hover:shadow-xl transition-all duration-400 group cursor-pointer flex flex-col h-full">
+      <div className="relative overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
         <img src={article.image} alt={article.title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
 
@@ -126,7 +126,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
 
         {/* Category badge */}
         <div className="absolute top-3 left-3 flex gap-2">
-          <span className="cat-pill bg-ashanti-green text-white shadow-sm">{article.category}</span>
+          <span className="cat-pill bg-ashanti-gold text-black shadow-sm">{article.category}</span>
           {(article as any).status === 'published' && (
             <span className="cat-pill bg-red-600 text-white flex items-center gap-1">
               <span className="w-1 h-1 bg-white rounded-full animate-ping" />LIVE
@@ -151,7 +151,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
         </p>
         <div className="flex items-center justify-between pt-4 border-t border-news-border">
           <span className="text-[10px] font-bold text-news-muted uppercase tracking-widest">{article.author}</span>
-          <span className="flex items-center gap-1 text-ashanti-green text-[10px] font-black uppercase tracking-widest group-hover:gap-2 transition-all">
+          <span className="flex items-center gap-1 text-ashanti-gold text-[10px] font-black uppercase tracking-widest group-hover:gap-2 transition-all">
             Read <ArrowUpRight size={12} />
           </span>
         </div>
