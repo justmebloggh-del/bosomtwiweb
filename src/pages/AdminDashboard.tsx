@@ -10,13 +10,13 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 
-const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'Settings'] as const;
+const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'Podcasts', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
 
 const ALL_CATEGORIES = [
   'All', 'Manhyia', 'News', 'Politics', 'Business', 'Education',
   'Sports', 'Entertainment', 'Lifestyle', 'Technology',
-  'International', 'Health', 'Local', 'Editorials',
+  'International', 'Health', 'Local', 'Editorials', 'Editorials & Opinion',
 ];
 
 interface AnalyticsData {
@@ -70,6 +70,13 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [breakingActive, setBreakingActive] = useState(false);
   const [breakingLoading, setBreakingLoading] = useState(false);
   const [breakingStatus, setBreakingStatus] = useState('');
+
+  // Podcasts tab
+  const [podcastForm, setPodcastForm] = useState({ title: '', description: '', episode: '', category: 'General' });
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [podcastUploading, setPodcastUploading] = useState(false);
+  const [podcastStatus, setPodcastStatus] = useState('');
 
   useEffect(() => {
     fetchArticles();
@@ -815,6 +822,128 @@ export default function AdminDashboard({ user }: { user: User }) {
                   <XCircle size={13} /> Clear
                 </button>
               </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── Podcasts ───────────────────────────────────────── */}
+        {tab === 'Podcasts' && (
+          <div className="max-w-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">Upload Podcast</h2>
+              {podcastStatus && (
+                <p className={`text-xs font-bold uppercase tracking-widest ${podcastStatus.startsWith('✓') ? 'text-green-500' : 'text-red-400'}`}>
+                  {podcastStatus}
+                </p>
+              )}
+            </div>
+
+            <form className="bg-news-card border border-news-border rounded-2xl p-6 space-y-5"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!podcastForm.title.trim()) return;
+                setPodcastUploading(true);
+                setPodcastStatus('');
+                try {
+                  const uploads: { type: string; path: string }[] = [];
+                  for (const [key, file] of [['audio', audioFile], ['video', videoFile]] as [string, File | null][]) {
+                    if (!file) continue;
+                    const ext = file.name.split('.').pop();
+                    const path = `podcasts/${Date.now()}-${key}.${ext}`;
+                    const { error } = await supabase.storage.from('podcasts').upload(path, file, { upsert: true });
+                    if (error) throw new Error(`${key} upload failed: ${error.message}`);
+                    uploads.push({ type: key, path });
+                  }
+                  await supabase.from('podcasts').insert({
+                    title:       podcastForm.title.trim(),
+                    description: podcastForm.description.trim() || null,
+                    episode:     podcastForm.episode.trim() || null,
+                    category:    podcastForm.category,
+                    audio_path:  uploads.find(u => u.type === 'audio')?.path ?? null,
+                    video_path:  uploads.find(u => u.type === 'video')?.path ?? null,
+                    author:      user.name,
+                    created_at:  new Date().toISOString(),
+                  });
+                  setPodcastStatus('✓ Podcast uploaded successfully');
+                  setPodcastForm({ title: '', description: '', episode: '', category: 'General' });
+                  setAudioFile(null);
+                  setVideoFile(null);
+                } catch (err: any) {
+                  setPodcastStatus(err.message || 'Upload failed');
+                } finally {
+                  setPodcastUploading(false);
+                }
+              }}>
+
+              {/* Title + Episode */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Episode Title *</label>
+                  <input type="text" required value={podcastForm.title}
+                    onChange={e => setPodcastForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. The Future of Bosomtwe District"
+                    className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Episode #</label>
+                  <input type="text" value={podcastForm.episode}
+                    onChange={e => setPodcastForm(f => ({ ...f, episode: e.target.value }))}
+                    placeholder="e.g. EP. 12"
+                    className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Category</label>
+                <select value={podcastForm.category}
+                  onChange={e => setPodcastForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors">
+                  {['General', 'Politics', 'Business', 'Sports', 'Entertainment', 'Technology', 'Health', 'Education', 'Community'].map(c => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Description</label>
+                <textarea rows={3} value={podcastForm.description}
+                  onChange={e => setPodcastForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Brief summary of this episode…"
+                  className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-2.5 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors resize-none" />
+              </div>
+
+              {/* Audio upload */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Audio File (MP3 / WAV)</label>
+                <label className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${audioFile ? 'border-ashanti-gold bg-ashanti-gold/5' : 'border-news-border hover:border-ashanti-gold hover:bg-ashanti-gold/5'}`}>
+                  <Loader2 size={16} className={`shrink-0 ${audioFile ? 'text-ashanti-gold' : 'text-news-muted'}`} />
+                  <span className={`text-sm font-medium truncate ${audioFile ? 'text-ashanti-gold' : 'text-news-muted'}`}>
+                    {audioFile ? audioFile.name : 'Click to select audio file'}
+                  </span>
+                  <input type="file" accept="audio/*" className="hidden"
+                    onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+
+              {/* Video upload */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Video File (MP4) — Optional</label>
+                <label className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${videoFile ? 'border-ashanti-gold bg-ashanti-gold/5' : 'border-news-border hover:border-ashanti-gold hover:bg-ashanti-gold/5'}`}>
+                  <Loader2 size={16} className={`shrink-0 ${videoFile ? 'text-ashanti-gold' : 'text-news-muted'}`} />
+                  <span className={`text-sm font-medium truncate ${videoFile ? 'text-ashanti-gold' : 'text-news-muted'}`}>
+                    {videoFile ? videoFile.name : 'Click to select video file'}
+                  </span>
+                  <input type="file" accept="video/*" className="hidden"
+                    onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+
+              <button type="submit" disabled={podcastUploading}
+                className="flex items-center gap-2 px-6 py-3 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl text-xs hover:bg-news-text hover:text-ashanti-gold transition-all disabled:opacity-50 shadow">
+                {podcastUploading ? <><Loader2 size={13} className="animate-spin" /> Uploading…</> : '↑ Upload Podcast'}
+              </button>
             </form>
           </div>
         )}

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PenLine, Check, AlertCircle, Loader2, Image, FileText, ShieldCheck } from 'lucide-react';
+import { PenLine, Check, AlertCircle, Loader2, Image, FileText, ShieldCheck, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import KenteBanner from '../components/KenteBanner';
 
@@ -21,13 +21,29 @@ export default function SubmitStoryPage({ onNavigate }: SubmitStoryPageProps) {
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
     title: '', category: CATEGORIES[0],
-    story: '', image_url: '', source: '',
+    story: '', source: '',
   });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const clearPhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -35,6 +51,18 @@ export default function SubmitStoryPage({ onNavigate }: SubmitStoryPageProps) {
     setStatus('sending');
     setErrorMsg('');
     try {
+      let imageUrl: string | null = null;
+      if (photoFile) {
+        const ext = photoFile.name.split('.').pop();
+        const path = `stories/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('story-photos')
+          .upload(path, photoFile, { upsert: true });
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from('story-photos').getPublicUrl(path);
+          imageUrl = publicUrl;
+        }
+      }
       const { error } = await supabase.from('story_submissions').insert({
         name:      form.name.trim(),
         email:     form.email.trim(),
@@ -42,12 +70,13 @@ export default function SubmitStoryPage({ onNavigate }: SubmitStoryPageProps) {
         title:     form.title.trim(),
         category:  form.category,
         story:     form.story.trim(),
-        image_url: form.image_url.trim() || null,
+        image_url: imageUrl,
         source:    form.source.trim() || null,
       });
       if (error) throw new Error(error.message);
       setStatus('success');
-      setForm({ name: '', email: '', phone: '', title: '', category: CATEGORIES[0], story: '', image_url: '', source: '' });
+      setForm({ name: '', email: '', phone: '', title: '', category: CATEGORIES[0], story: '', source: '' });
+      clearPhoto();
     } catch (err: any) {
       setErrorMsg(err.message || 'Could not submit your story. Please email us at bosomtwiweb@gmail.com');
       setStatus('error');
@@ -184,11 +213,32 @@ export default function SubmitStoryPage({ onNavigate }: SubmitStoryPageProps) {
                           <p className="text-[10px] text-news-muted mt-1">{form.story.trim().split(/\s+/).filter(Boolean).length} words</p>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Photo / Image URL (Optional)</label>
-                          <input type="url" value={form.image_url} onChange={set('image_url')}
-                            placeholder="https://example.com/photo.jpg"
-                            className="w-full bg-brand-surface border border-news-border rounded-xl px-4 py-3 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-all placeholder:text-news-muted" />
-                          <p className="text-[10px] text-news-muted mt-1">Paste a link to a publicly accessible image you took.</p>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Photo Upload (Optional)</label>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoChange}
+                            className="hidden"
+                            id="story-photo-input"
+                          />
+                          {photoPreview ? (
+                            <div className="relative rounded-xl overflow-hidden border border-news-border">
+                              <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover" />
+                              <button type="button" onClick={clearPhoto}
+                                className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors">
+                                <X size={13} />
+                              </button>
+                              <p className="text-[10px] text-news-muted px-3 py-2 bg-brand-surface">{photoFile?.name}</p>
+                            </div>
+                          ) : (
+                            <label htmlFor="story-photo-input"
+                              className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-news-border rounded-xl cursor-pointer hover:border-ashanti-gold hover:bg-ashanti-gold/5 transition-all group">
+                              <Upload size={20} className="text-news-muted group-hover:text-ashanti-gold transition-colors" />
+                              <span className="text-[10px] font-bold text-news-muted group-hover:text-ashanti-gold uppercase tracking-widest transition-colors">Click to upload a photo</span>
+                              <span className="text-[9px] text-news-muted">JPG, PNG, WEBP — max 10MB</span>
+                            </label>
+                          )}
                         </div>
                         <div>
                           <label className="block text-[10px] font-black uppercase tracking-widest text-news-muted mb-2">Sources / References (Optional)</label>

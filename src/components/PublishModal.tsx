@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 const ALL_CATEGORIES = [
   'Manhyia', 'News', 'Politics', 'Business', 'Education',
   'Sports', 'Entertainment', 'Lifestyle', 'Technology',
-  'International', 'Health', 'Local', 'Editorials',
+  'International', 'Health', 'Local', 'Editorials', 'Editorials & Opinion',
 ];
 
 

@@ -70,7 +70,7 @@ export default function BusinessDirectoryPage() {
               placeholder="Search businesses, services, locations…"
               className="w-full bg-news-card border border-news-border rounded-xl pl-11 pr-4 py-3 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-all placeholder:text-news-muted" />
           </div>
-          <a href="mailto:directory@bosomtwi.web"
+          <a href="mailto:bosomtwiweb@gmail.com"
             className="flex items-center gap-2 px-5 py-3 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl text-[11px] hover:bg-news-text hover:text-ashanti-gold transition-all whitespace-nowrap">
             <Plus size={13} /> List Your Business
           </a>
@@ -145,7 +145,7 @@ export default function BusinessDirectoryPage() {
               Get your business in front of over 1 million monthly readers. Listings are free for Ashanti Region businesses.
             </p>
           </div>
-          <a href="mailto:directory@bosomtwi.web"
+          <a href="mailto:bosomtwiweb@gmail.com"
             className="flex items-center gap-2 px-7 py-4 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl text-[11px] hover:bg-news-text hover:text-ashanti-gold transition-all whitespace-nowrap shrink-0">
             <Plus size={14} /> Add Free Listing
           </a>
