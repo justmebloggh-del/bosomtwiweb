@@ -107,7 +107,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
 
   // ── Medium (default) — premium card ─────────────────────────
   return (
-    <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border hover:border-ashanti-gold/40 hover:shadow-xl transition-all duration-400 group cursor-pointer flex flex-col h-full">
+    <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border card-glass hover:border-ashanti-gold/50 group cursor-pointer flex flex-col h-full">
       <div className="relative overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
         <img src={article.image} alt={article.title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
@@ -126,7 +126,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
 
         {/* Category badge */}
         <div className="absolute top-3 left-3 flex gap-2">
-          <span className="cat-pill bg-ashanti-gold text-black shadow-sm">{article.category}</span>
+          <span className="cat-pill bg-ashanti-gold text-black shadow-md shadow-ashanti-gold/30">{article.category}</span>
           {(article as any).status === 'published' && (
             <span className="cat-pill bg-red-600 text-white flex items-center gap-1">
               <span className="w-1 h-1 bg-white rounded-full animate-ping" />LIVE
@@ -143,7 +143,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
       </div>
 
       <div className="p-5 flex flex-col flex-1">
-        <h3 className="font-heading text-lg font-bold mb-2.5 leading-snug text-news-text group-hover:text-ashanti-gold transition-colors line-clamp-2">
+        <h3 className="font-heading text-lg font-bold mb-2.5 leading-snug text-news-text group-hover:text-ashanti-green transition-colors line-clamp-2">
           {article.title}
         </h3>
         <p className="text-news-muted text-sm line-clamp-2 mb-4 leading-relaxed flex-1">
@@ -151,7 +151,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
         </p>
         <div className="flex items-center justify-between pt-4 border-t border-news-border">
           <span className="text-[10px] font-bold text-news-muted uppercase tracking-widest">{article.author}</span>
-          <span className="flex items-center gap-1 text-ashanti-gold text-[10px] font-black uppercase tracking-widest group-hover:gap-2 transition-all">
+          <span className="flex items-center gap-1 text-ashanti-green text-[10px] font-black uppercase tracking-widest group-hover:gap-2 group-hover:text-ashanti-gold transition-all">
             Read <ArrowUpRight size={12} />
           </span>
         </div>

@@ -54,10 +54,13 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
   };
 
   return (
-    <footer className="bg-[#050505] text-white">
+    <footer className="bg-ashanti-green text-white">
+
+      {/* ── Kente stripe ────────────────────────────────────── */}
+      <div className="kente-stripe" />
 
       {/* ── Top CTA band ────────────────────────────────────── */}
-      <div className="border-b border-white/10 bg-white/5">
+      <div className="border-b border-white/10 bg-black/15">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div>
             <p className="text-[10px] uppercase tracking-[0.4em] font-black text-ashanti-gold mb-1">Free Newsletter</p>

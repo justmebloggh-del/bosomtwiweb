@@ -9,32 +9,32 @@
 
   /* Brand palette */
   --color-brand-primary:   #E09E2B;
-  --color-brand-secondary: #0A1B35;
-  --color-brand-accent:    #112A50;
-  --color-brand-surface:   #F8F7F2;
+  --color-brand-secondary: #0D3B1A;
+  --color-brand-accent:    #1a5c2e;
+  --color-brand-surface:   #F4F9F5;
 
   /* Semantic aliases */
   --color-ashanti-gold:    #E09E2B;
   --color-ashanti-green:   #0D3B1A;
   --color-news-bg:         #FFFFFF;
-  --color-news-text:       #050505;
-  --color-news-muted:      #6B7280;
-  --color-news-border:     #E5E5E0;
+  --color-news-text:       #0A1A0D;
+  --color-news-muted:      #4A6455;
+  --color-news-border:     #D8EAE0;
   --color-news-card:       #FFFFFF;
 
   /* Override Tailwind black */
-  --color-black: #050505;
+  --color-black: #0A1A0D;
 }
 
 /* ── Dark Mode Overrides ────────────────────────────────────── */
 .dark {
-  --color-news-bg:       #050505;
-  --color-news-text:     #F5F5F0;
-  --color-news-muted:    #9CA3AF;
-  --color-news-border:   #1F1F1F;
-  --color-news-card:     #111111;
-  --color-brand-surface: #0A0A0A;
-  --color-black:         #F5F5F0;
+  --color-news-bg:       #060F08;
+  --color-news-text:     #EAF3EC;
+  --color-news-muted:    #7BA88A;
+  --color-news-border:   #122418;
+  --color-news-card:     #0B1E0F;
+  --color-brand-surface: #070E09;
+  --color-black:         #EAF3EC;
 }
 
 /* ── Dark variant for Tailwind v4 ───────────────────────────── */
@@ -195,36 +195,57 @@
 
 /* ── Kente stripe accent ────────────────────────────────────── */
 .kente-stripe {
-  height: 4px;
+  height: 5px;
   background: repeating-linear-gradient(
     90deg,
-    #E09E2B 0px,   #E09E2B 18px,
-    #0D3B1A 18px,  #0D3B1A 36px,
-    #FFFFFF 36px,  #FFFFFF 42px,
-    #0D3B1A 42px,  #0D3B1A 60px,
-    #E09E2B 60px,  #E09E2B 78px,
-    #7A1C1C 78px,  #7A1C1C 96px
+    #E09E2B 0px,   #E09E2B 20px,
+    #0D3B1A 20px,  #0D3B1A 40px,
+    #FFFFFF 40px,  #FFFFFF 46px,
+    #0D3B1A 46px,  #0D3B1A 66px,
+    #E09E2B 66px,  #E09E2B 86px,
+    #7A1C1C 86px,  #7A1C1C 106px
   );
 }
 
 /* ── Kente diamond pattern overlay ─────────────────────────── */
 .kente-pattern-bg {
   background-image:
-    repeating-linear-gradient(45deg,  rgba(224,158,43,0.08) 0px, rgba(224,158,43,0.08) 1px, transparent 1px, transparent 12px),
-    repeating-linear-gradient(-45deg, rgba(13,59,26,0.06)   0px, rgba(13,59,26,0.06)   1px, transparent 1px, transparent 12px);
+    repeating-linear-gradient(45deg,  rgba(224,158,43,0.09) 0px, rgba(224,158,43,0.09) 1px, transparent 1px, transparent 14px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 14px);
 }
 
 /* ── Section divider with kente colors ──────────────────────── */
 .kente-divider {
-  height: 3px;
+  height: 4px;
   background: linear-gradient(90deg,
-    #0D3B1A 0%,
-    #E09E2B 25%,
+    transparent 0%,
+    #0D3B1A 10%,
+    #E09E2B 30%,
     #FFFFFF 50%,
-    #E09E2B 75%,
-    #0D3B1A 100%
+    #E09E2B 70%,
+    #0D3B1A 90%,
+    transparent 100%
   );
-  opacity: 0.6;
+  opacity: 0.7;
+}
+
+/* ── Premium card glass hover ───────────────────────────────── */
+.card-glass {
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1), box-shadow 0.35s cubic-bezier(.4,0,.2,1), border-color 0.35s ease;
+}
+.card-glass:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 24px 48px rgba(13,59,26,0.10), 0 0 0 1px rgba(224,158,43,0.25);
+}
+
+/* ── Gold shimmer text ──────────────────────────────────────── */
+.text-shimmer {
+  background: linear-gradient(90deg, #E09E2B 0%, #F5C842 40%, #C9870E 60%, #E09E2B 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
 }
 
 /* ── Ticker strip ───────────────────────────────────────────── */

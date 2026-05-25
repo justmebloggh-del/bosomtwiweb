@@ -106,7 +106,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
     <nav ref={navRef} className="sticky top-0 z-50">
 
       {/* ── Strip 1: Social + Date + Auth ─────────────────────── */}
-      <div className="bg-[#050505] text-white border-b border-white/10">
+      <div className="bg-ashanti-green text-white border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-9">
 
           {/* Social icons */}
@@ -152,7 +152,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
               </div>
             ) : (
               <button onClick={onLoginClick}
-                className="px-3 h-6 bg-ashanti-gold text-black text-[9px] font-black uppercase tracking-widest rounded hover:bg-white transition-all ml-1">
+                className="px-4 h-6 bg-ashanti-gold text-black text-[9px] font-black uppercase tracking-widest rounded-full hover:bg-white hover:shadow-lg hover:shadow-ashanti-gold/20 transition-all ml-1">
                 Login
               </button>
             )}
@@ -160,8 +160,11 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
         </div>
       </div>
 
+      {/* ── Kente accent stripe ───────────────────────────────── */}
+      <div className="kente-stripe" />
+
       {/* ── Strip 2: Logo + Nav + Search + Toggles ────────────── */}
-      <div className="bg-news-bg/98 backdrop-blur-xl border-b border-news-border shadow-sm">
+      <div className="bg-white/95 backdrop-blur-xl border-b border-news-border shadow-[0_2px_20px_rgba(13,59,26,0.06)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-[60px] gap-4">
 
           {/* Mobile hamburger */}
@@ -387,7 +390,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
       </div>
 
       {/* ── Strip 3: Secondary nav ────────────────────────────── */}
-      <div className="bg-[#050505] hidden lg:block">
+      <div className="bg-ashanti-green hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-7 gap-6">
           {[
             { label: 'Editorials',    page: 'editorials' },
@@ -504,7 +507,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
               {!user && (
                 <div className="p-4 border-t border-news-border">
                   <button onClick={() => { onLoginClick(); close(); }}
-                    className="w-full py-3.5 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl hover:bg-news-text hover:text-ashanti-gold transition-all text-sm">
+                    className="w-full py-3.5 bg-ashanti-green text-white font-black uppercase tracking-widest rounded-xl hover:bg-ashanti-gold hover:text-black transition-all text-sm shadow-lg shadow-ashanti-green/20">
                     Journalist Login
                   </button>
                 </div>

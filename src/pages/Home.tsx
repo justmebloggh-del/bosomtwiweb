@@ -252,7 +252,7 @@ function BreakingTicker({ articles, onArticleClick }: { articles: Article[]; onA
   const current = articles[index];
 
   return (
-    <div className="h-10 bg-[#050505] flex items-center overflow-hidden px-0 border-b border-white/10">
+    <div className="h-10 bg-ashanti-green flex items-center overflow-hidden px-0 border-b border-white/10">
       {/* Badge */}
       <div className="breaking-badge shrink-0 flex items-center gap-2 h-full">
         <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }}
@@ -571,10 +571,10 @@ export default function Home({ onArticleClick, articles, onCategoryClick, onNavi
       <div className="kente-stripe" />
 
       {/* ── Newsletter CTA ───────────────────────────────────── */}
-      <section className="py-16 bg-[#050505] relative overflow-hidden">
+      <section className="py-16 bg-ashanti-green kente-pattern-bg relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-ashanti-gold rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-ashanti-gold rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-ashanti-gold/60 rounded-full blur-3xl" />
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-10">
           <div className="max-w-xl text-center lg:text-left">
