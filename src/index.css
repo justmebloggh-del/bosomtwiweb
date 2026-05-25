@@ -9,32 +9,32 @@
 
   /* Brand palette */
   --color-brand-primary:   #E09E2B;
-  --color-brand-secondary: #0D3B1A;
-  --color-brand-accent:    #1a5c2e;
-  --color-brand-surface:   #F3F8F4;
+  --color-brand-secondary: #0A1B35;
+  --color-brand-accent:    #112A50;
+  --color-brand-surface:   #F8F7F2;
 
   /* Semantic aliases */
   --color-ashanti-gold:    #E09E2B;
   --color-ashanti-green:   #0D3B1A;
   --color-news-bg:         #FFFFFF;
-  --color-news-text:       #0A1A0D;
-  --color-news-muted:      #4A6455;
-  --color-news-border:     #D0E4D5;
+  --color-news-text:       #050505;
+  --color-news-muted:      #6B7280;
+  --color-news-border:     #E5E5E0;
   --color-news-card:       #FFFFFF;
 
   /* Override Tailwind black */
-  --color-black: #0A1A0D;
+  --color-black: #050505;
 }
 
 /* ── Dark Mode Overrides ────────────────────────────────────── */
 .dark {
-  --color-news-bg:       #061009;
-  --color-news-text:     #EDF5EF;
-  --color-news-muted:    #7DA88A;
-  --color-news-border:   #14301C;
-  --color-news-card:     #0A1A0D;
-  --color-brand-surface: #081209;
-  --color-black:         #EDF5EF;
+  --color-news-bg:       #050505;
+  --color-news-text:     #F5F5F0;
+  --color-news-muted:    #9CA3AF;
+  --color-news-border:   #1F1F1F;
+  --color-news-card:     #111111;
+  --color-brand-surface: #0A0A0A;
+  --color-black:         #F5F5F0;
 }
 
 /* ── Dark variant for Tailwind v4 ───────────────────────────── */

@@ -106,7 +106,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
     <nav ref={navRef} className="sticky top-0 z-50">
 
       {/* ── Strip 1: Social + Date + Auth ─────────────────────── */}
-      <div className="bg-ashanti-green text-white border-b border-white/10">
+      <div className="bg-[#050505] text-white border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-9">
 
           {/* Social icons */}
@@ -159,9 +159,6 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
           </div>
         </div>
       </div>
-
-      {/* ── Kente accent stripe between strips ────────────────── */}
-      <div className="kente-stripe" />
 
       {/* ── Strip 2: Logo + Nav + Search + Toggles ────────────── */}
       <div className="bg-news-bg/98 backdrop-blur-xl border-b border-news-border shadow-sm">
@@ -390,7 +387,7 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
       </div>
 
       {/* ── Strip 3: Secondary nav ────────────────────────────── */}
-      <div className="bg-ashanti-green hidden lg:block">
+      <div className="bg-[#050505] hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-7 gap-6">
           {[
             { label: 'Editorials',    page: 'editorials' },

@@ -275,8 +275,7 @@ export default function AdminDashboard({ user }: { user: User }) {
   return (
     <div className="min-h-screen bg-brand-surface text-news-text">
       {/* ── Top bar ──────────────────────────────────────────── */}
-      <div className="bg-ashanti-green sticky top-0 z-10">
-        <div className="kente-stripe" />
+      <div className="bg-[#050505] sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4">
             <div>
