@@ -30,11 +30,11 @@ function SectionHeader({ title, onSeeAll }: { title: string; category?: string; 
   return (
     <div className="flex items-center justify-between mb-8">
       <div className="flex items-center gap-4">
-        <div className="w-1 h-8 bg-ashanti-gold rounded-full" />
+        <div className="w-1 h-8 bg-ashanti-green rounded-full" />
         <h2 className="font-heading text-2xl md:text-3xl font-bold text-news-text tracking-tight">{title}</h2>
       </div>
       <button onClick={onSeeAll}
-        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-ashanti-gold hover:text-news-text transition-colors group">
+        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-ashanti-green hover:text-ashanti-gold transition-colors group">
         See All <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
       </button>
     </div>
@@ -58,7 +58,7 @@ function CategorySection({ cat, articles, onArticleClick, onCategoryClick }: {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Lead story */}
           <div className="lg:col-span-2 cursor-pointer group" onClick={() => onArticleClick(lead)}>
-            <div className="relative overflow-hidden rounded-2xl aspect-[16/9] bg-gray-200 mb-4">
+            <div className="relative overflow-hidden rounded-2xl aspect-[16/9] bg-brand-surface mb-4">
               <img src={lead.image} alt={lead.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
               <div className="news-banner-overlay absolute inset-0" />
