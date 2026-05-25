@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Megaphone, Mail, TrendingUp, Users, BarChart2, Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Megaphone, Mail, TrendingUp, Users, BarChart2, Check, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface AdvertiseProps {
   onBack?: () => void;
@@ -84,10 +85,30 @@ const STATS = [
 export default function Advertise({ onBack }: AdvertiseProps) {
   const [form, setForm] = useState({ name: '', email: '', company: '', package: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
-  const handleSubmit = (e: { preventDefault(): void }) => {
+  const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSending(true);
+    setSendError('');
+    try {
+      const { error } = await supabase.from('ad_enquiries').insert({
+        name:       form.name.trim(),
+        email:      form.email.trim(),
+        company:    form.company.trim(),
+        package:    form.package || null,
+        message:    form.message.trim() || null,
+        status:     'new',
+        created_at: new Date().toISOString(),
+      });
+      if (error) throw new Error(error.message);
+      setSubmitted(true);
+    } catch (err: any) {
+      setSendError(err.message || 'Could not send. Please email bosomtwiweb@gmail.com directly.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -278,17 +299,21 @@ export default function Advertise({ onBack }: AdvertiseProps) {
                 />
               </div>
 
+              {sendError && (
+                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{sendError}</p>
+              )}
+
               <button
                 type="submit"
-                className="w-full bg-ashanti-gold hover:bg-news-text text-black hover:text-ashanti-gold py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-3 group"
+                disabled={sending}
+                className="w-full bg-ashanti-gold hover:bg-news-text text-black hover:text-ashanti-gold py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-3 group disabled:opacity-60"
               >
-                <span>Submit Enquiry</span>
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                {sending ? <><Loader2 size={18} className="animate-spin" /> Sending…</> : <><span>Submit Enquiry</span><ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
               </button>
 
               <p className="text-center text-[10px] uppercase tracking-widest font-bold text-news-text/25 pt-2">
                 Or email us directly at{' '}
-                <a href="mailto:ads@bosomtwi.web" className="text-ashanti-gold hover:underline">ads@bosomtwi.web</a>
+                <a href="mailto:bosomtwiweb@gmail.com" className="text-ashanti-gold hover:underline">bosomtwiweb@gmail.com</a>
               </p>
             </motion.form>
           )}

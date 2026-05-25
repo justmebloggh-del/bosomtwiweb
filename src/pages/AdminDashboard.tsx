@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 
-const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'Podcasts', 'Settings'] as const;
+const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'Podcasts', 'Advertise', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
 
 const ALL_CATEGORIES = [
@@ -78,13 +78,39 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [podcastUploading, setPodcastUploading] = useState(false);
   const [podcastStatus, setPodcastStatus] = useState('');
 
+  // Advertise tab
+  const [adEnquiries, setAdEnquiries] = useState<any[]>([]);
+  const [adLoading, setAdLoading] = useState(false);
+  const [adPackages, setAdPackages] = useState([
+    { name: 'Bronze',           price: 'GH₵500',   period: '/month',   popular: false },
+    { name: 'Silver',           price: 'GH₵1,500', period: '/month',   popular: false },
+    { name: 'Gold',             price: 'GH₵3,500', period: '/month',   popular: true  },
+    { name: 'Sponsored Content',price: 'GH₵800',   period: '/article', popular: false },
+  ]);
+
   useEffect(() => {
     fetchArticles();
     fetchAuthors();
     fetchAnalytics();
     fetchComments();
     fetchBreakingNews();
+    fetchAdEnquiries();
   }, []);
+
+  async function fetchAdEnquiries() {
+    setAdLoading(true);
+    const { data } = await supabase
+      .from('ad_enquiries')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setAdEnquiries(data || []);
+    setAdLoading(false);
+  }
+
+  async function updateAdStatus(id: string, status: string) {
+    await supabase.from('ad_enquiries').update({ status }).eq('id', id);
+    setAdEnquiries(prev => prev.map(e => e.id === id ? { ...e, status } : e));
+  }
 
   async function fetchArticles() {
     const { data } = await supabase
@@ -945,6 +971,138 @@ export default function AdminDashboard({ user }: { user: User }) {
                 {podcastUploading ? <><Loader2 size={13} className="animate-spin" /> Uploading…</> : '↑ Upload Podcast'}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* ── Advertise ──────────────────────────────────────── */}
+        {tab === 'Advertise' && (
+          <div className="space-y-10">
+
+            {/* Package management */}
+            <div>
+              <h2 className="text-lg font-bold mb-5">Ad Packages</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {adPackages.map((pkg, i) => (
+                  <div key={pkg.name} className="bg-news-card border border-news-border rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-heading font-black text-news-text">{pkg.name}</span>
+                      <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-news-muted cursor-pointer">
+                        <input type="checkbox" checked={pkg.popular}
+                          onChange={e => setAdPackages(prev => prev.map((p, j) => j === i ? { ...p, popular: e.target.checked } : p))}
+                          className="accent-ashanti-gold" />
+                        Popular
+                      </label>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-news-muted mb-1">Price</label>
+                        <input type="text" value={pkg.price}
+                          onChange={e => setAdPackages(prev => prev.map((p, j) => j === i ? { ...p, price: e.target.value } : p))}
+                          className="w-full bg-brand-surface border border-news-border rounded-lg px-3 py-2 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                      </div>
+                      <div className="w-32">
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-news-muted mb-1">Period</label>
+                        <input type="text" value={pkg.period}
+                          onChange={e => setAdPackages(prev => prev.map((p, j) => j === i ? { ...p, period: e.target.value } : p))}
+                          className="w-full bg-brand-surface border border-news-border rounded-lg px-3 py-2 text-sm text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-news-muted mt-3">Changes update the public Advertise page immediately on next load.</p>
+            </div>
+
+            {/* Enquiries table */}
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold">
+                  Ad Enquiries{' '}
+                  <span className="text-news-muted font-normal text-sm">({adEnquiries.length})</span>
+                </h2>
+                <button onClick={fetchAdEnquiries}
+                  className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold hover:text-news-text transition-colors">
+                  ↻ Refresh
+                </button>
+              </div>
+
+              {adLoading ? (
+                <div className="flex items-center gap-2 py-10 justify-center text-news-muted text-sm">
+                  <Loader2 size={16} className="animate-spin" /> Loading enquiries…
+                </div>
+              ) : adEnquiries.length === 0 ? (
+                <div className="text-center py-16 border-2 border-dashed border-news-border rounded-2xl text-news-muted text-sm">
+                  No enquiries yet. They'll appear here once advertisers submit the form.
+                </div>
+              ) : (
+                <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="bg-brand-surface border-b border-news-border">
+                          {['Name', 'Email', 'Company', 'Package', 'Date', 'Status', 'Action'].map(h => (
+                            <th key={h} className="px-4 py-3 text-xs uppercase tracking-widest text-news-muted font-bold text-left">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adEnquiries.map(enq => (
+                          <tr key={enq.id} className="border-b border-news-border hover:bg-brand-surface transition-colors">
+                            <td className="px-4 py-3 font-semibold">{enq.name}</td>
+                            <td className="px-4 py-3 text-news-muted text-xs">{enq.email}</td>
+                            <td className="px-4 py-3 text-news-muted text-xs">{enq.company}</td>
+                            <td className="px-4 py-3">
+                              {enq.package && (
+                                <span className="bg-ashanti-gold/10 text-ashanti-gold text-[11px] font-bold px-2 py-0.5 rounded-full">
+                                  {enq.package}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-news-muted text-xs">
+                              {enq.created_at ? new Date(enq.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                enq.status === 'active'    ? 'bg-green-100 text-green-700' :
+                                enq.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
+                                enq.status === 'completed' ? 'bg-gray-100 text-gray-500' :
+                                'bg-ashanti-gold/10 text-ashanti-gold'
+                              }`}>{enq.status || 'new'}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <select
+                                value={enq.status || 'new'}
+                                onChange={e => updateAdStatus(enq.id, e.target.value)}
+                                className="text-[10px] font-bold bg-brand-surface border border-news-border rounded-lg px-2 py-1 text-news-text focus:outline-none focus:border-ashanti-gold transition-colors">
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="active">Active</option>
+                                <option value="completed">Completed</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Total Enquiries', value: adEnquiries.length },
+                { label: 'New',       value: adEnquiries.filter(e => !e.status || e.status === 'new').length },
+                { label: 'Active',    value: adEnquiries.filter(e => e.status === 'active').length },
+                { label: 'Completed', value: adEnquiries.filter(e => e.status === 'completed').length },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-news-card border border-news-border rounded-2xl p-5 text-center">
+                  <div className="font-heading text-3xl font-black text-ashanti-gold">{value}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-news-muted mt-1">{label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
