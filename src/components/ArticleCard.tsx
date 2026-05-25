@@ -143,7 +143,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
       </div>
 
       <div className="p-5 flex flex-col flex-1">
-        <h3 className="font-heading text-lg font-bold mb-2.5 leading-snug text-news-text group-hover:text-ashanti-green transition-colors line-clamp-2">
+        <h3 className="font-heading text-lg font-bold mb-2.5 leading-snug text-news-text group-hover:text-ashanti-gold transition-colors line-clamp-2">
           {article.title}
         </h3>
         <p className="text-news-muted text-sm line-clamp-2 mb-4 leading-relaxed flex-1">
@@ -151,7 +151,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
         </p>
         <div className="flex items-center justify-between pt-4 border-t border-news-border">
           <span className="text-[10px] font-bold text-news-muted uppercase tracking-widest">{article.author}</span>
-          <span className="flex items-center gap-1 text-ashanti-green text-[10px] font-black uppercase tracking-widest group-hover:gap-2 group-hover:text-ashanti-gold transition-all">
+          <span className="flex items-center gap-1 text-ashanti-gold text-[10px] font-black uppercase tracking-widest group-hover:gap-2 transition-all">
             Read <ArrowUpRight size={12} />
           </span>
         </div>
