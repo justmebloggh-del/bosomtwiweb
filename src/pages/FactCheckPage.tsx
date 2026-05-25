@@ -172,7 +172,7 @@ export default function FactCheckPage() {
         <div className="mt-12 p-6 bg-news-card border border-news-border rounded-2xl text-center">
           <h3 className="font-heading font-bold text-news-text mb-2">Spot a rumour that needs checking?</h3>
           <p className="text-news-muted text-sm mb-4">Submit a claim and our fact-checking team will investigate.</p>
-          <a href="mailto:factcheck@bosomtwi.web"
+          <a href="mailto:bosomtwiweb@gmail.com"
             className="inline-flex items-center gap-2 px-6 py-3 bg-ashanti-gold text-black font-black uppercase tracking-widest rounded-xl text-[11px] hover:bg-news-text hover:text-ashanti-gold transition-all">
             <ShieldCheck size={13} /> Submit a Claim
           </a>
