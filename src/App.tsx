@@ -69,23 +69,6 @@ function PageSpinner() {
   );
 }
 
-// ── Dark mode hook ───────────────────────────────────────────────
-function useDarkMode(): [boolean, () => void] {
-  const [dark, setDark] = useState(() => {
-    try {
-      if (localStorage.getItem('bw-dark') === '1') return true;
-      if (localStorage.getItem('bw-dark') === '0') return false;
-    } catch { /* */ }
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-  });
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    try { localStorage.setItem('bw-dark', dark ? '1' : '0'); } catch { /* */ }
-  }, [dark]);
-
-  return [dark, () => setDark(d => !d)];
-}
 
 // ── Back-to-top button ───────────────────────────────────────────
 function BackToTop() {
@@ -111,7 +94,6 @@ function BackToTop() {
 }
 
 export default function App() {
-  const [dark, toggleDark] = useDarkMode();
   const [user, setUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [activeCategory, setActiveCategory] = useState('');
@@ -241,8 +223,6 @@ export default function App() {
     <div className="min-h-screen flex flex-col font-sans bg-news-bg text-news-text overflow-x-hidden">
       <Navbar
         user={user}
-        dark={dark}
-        onDarkToggle={toggleDark}
         onLogout={handleLogout}
         onLoginClick={() => setCurrentPage('login')}
         onCategoryClick={handleCategorySelect}

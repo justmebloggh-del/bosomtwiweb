@@ -26,19 +26,6 @@
   --color-black: #0A1A0D;
 }
 
-/* ── Dark Mode Overrides ────────────────────────────────────── */
-.dark {
-  --color-news-bg:       #060F08;
-  --color-news-text:     #EAF3EC;
-  --color-news-muted:    #7BA88A;
-  --color-news-border:   #122418;
-  --color-news-card:     #0B1E0F;
-  --color-brand-surface: #070E09;
-  --color-black:         #EAF3EC;
-}
-
-/* ── Dark variant for Tailwind v4 ───────────────────────────── */
-@variant dark (&:where(.dark, .dark *));
 
 /* ── Base Styles ────────────────────────────────────────────── */
 @layer base {
@@ -113,10 +100,6 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
-.dark .skeleton {
-  background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
-  background-size: 200% 100%;
-}
 
 /* ── Glassmorphism ──────────────────────────────────────────── */
 .glass {
@@ -137,9 +120,6 @@
 .card-hover:hover {
   transform: translateY(-4px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-}
-.dark .card-hover:hover {
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Gold gradient text ─────────────────────────────────────── */

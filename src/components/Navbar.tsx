@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, Search, LogOut, ChevronDown, Radio, TrendingUp, Video, Archive, X, LayoutGrid, Moon, Sun, Tv, ChevronRight, Newspaper, Briefcase, Trophy, Film, Globe, GraduationCap, Heart, ShieldCheck, Mic, Building2, Users, PenLine, Send, Info, Phone } from 'lucide-react';
+import { Menu, Search, LogOut, ChevronDown, Radio, TrendingUp, Video, Archive, X, LayoutGrid, Tv, ChevronRight, Newspaper, Briefcase, Trophy, Film, Globe, GraduationCap, Heart, ShieldCheck, Mic, Building2, Users, PenLine, Send, Info, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function FacebookIcon({ size = 14, className }: { size?: number; className?: string }) {
@@ -36,8 +36,6 @@ function TikTokIcon({ size = 14, className }: { size?: number; className?: strin
 
 interface NavbarProps {
   user: any;
-  dark: boolean;
-  onDarkToggle: () => void;
   onLogout: () => void;
   onLoginClick: () => void;
   onCategoryClick: (category: string) => void;
@@ -81,7 +79,7 @@ function useDateTime() {
   return dt;
 }
 
-export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClick, onCategoryClick, onNavigate, onSearchOpen, onAdminClick }: NavbarProps) {
+export default function Navbar({ user, onLogout, onLoginClick, onCategoryClick, onNavigate, onSearchOpen, onAdminClick }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [navBottom, setNavBottom] = useState(134);
@@ -372,12 +370,6 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
               <Search size={18} />
             </button>
 
-            {/* Dark mode toggle */}
-            <button onClick={onDarkToggle} aria-label="Toggle theme"
-              className="p-2 text-news-text/40 hover:text-ashanti-gold transition-colors rounded-lg hover:bg-brand-surface">
-              {dark ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-
             {/* LIVE TV button */}
             <button onClick={() => onNavigate('live')}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-red-600/20 ml-1">
@@ -434,10 +426,6 @@ export default function Navbar({ user, dark, onDarkToggle, onLogout, onLoginClic
                   <motion.span animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1, repeat: Infinity }}
                     className="w-1.5 h-1.5 bg-white rounded-full" />
                   Watch Live
-                </button>
-                <button onClick={onDarkToggle}
-                  className="w-11 h-10 flex items-center justify-center rounded-xl border border-news-border text-news-text/50 hover:text-ashanti-gold">
-                  {dark ? <Sun size={16} /> : <Moon size={16} />}
                 </button>
               </div>
 
