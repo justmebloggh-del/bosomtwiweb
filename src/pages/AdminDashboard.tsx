@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 
-const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'TV', 'Podcasts', 'Advertise', 'Settings'] as const;
+const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'TV', 'Podcasts', 'Advertise', 'Community', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
 
 const ALL_CATEGORIES = [
@@ -126,6 +126,19 @@ export default function AdminDashboard({ user }: { user: User }) {
     { name: 'Sponsored Content',price: 'GH₵800',   period: '/article', popular: false },
   ]);
 
+  // Community tab
+  const [commSubTab, setCommSubTab] = useState<'Events'|'Jobs'|'Scholarships'|'Polls'>('Events');
+  const [commEvents, setCommEvents] = useState<any[]>([]);
+  const [commJobs, setCommJobs] = useState<any[]>([]);
+  const [commScholarships, setCommScholarships] = useState<any[]>([]);
+  const [commPolls, setCommPolls] = useState<any[]>([]);
+  const [commSaving, setCommSaving] = useState(false);
+  const [commStatus, setCommStatus] = useState('');
+  const [eventForm, setEventForm] = useState({ title:'', date:'', location:'', category:'Culture', description:'', image_url:'' });
+  const [jobForm, setJobForm] = useState({ title:'', company:'', location:'', type:'Full-Time', deadline:'', category:'', apply_url:'' });
+  const [scholarForm, setScholarForm] = useState({ title:'', funder:'', level:'Undergraduate', deadline:'', amount:'', description:'', apply_url:'' });
+  const [pollForm, setPollForm] = useState({ question:'', opt1:'', opt2:'', opt3:'', opt4:'' });
+
   useEffect(() => {
     fetchArticles();
     fetchAuthors();
@@ -135,6 +148,7 @@ export default function AdminDashboard({ user }: { user: User }) {
     fetchAdEnquiries();
     fetchLiveAds();
     fetchTvUrls();
+    fetchCommunity();
   }, []);
 
   async function fetchTvUrls() {
@@ -157,6 +171,37 @@ export default function AdminDashboard({ user }: { user: User }) {
     setTvSaving(false);
     if (error) { setTvStatus('Error: ' + error.message); }
     else { setTvStatus('✓ TV URLs updated — live for all visitors!'); setTimeout(() => setTvStatus(''), 4000); }
+  }
+
+  async function fetchCommunity() {
+    const [{ data: ev }, { data: jb }, { data: sc }, { data: pl }] = await Promise.all([
+      supabase.from('community_events').select('*').order('created_at', { ascending: false }),
+      supabase.from('community_jobs').select('*').order('created_at', { ascending: false }),
+      supabase.from('community_scholarships').select('*').order('created_at', { ascending: false }),
+      supabase.from('community_polls').select('*').order('created_at', { ascending: false }),
+    ]);
+    if (ev) setCommEvents(ev);
+    if (jb) setCommJobs(jb);
+    if (sc) setCommScholarships(sc);
+    if (pl) setCommPolls(pl);
+  }
+
+  async function commAdd(table: string, payload: object) {
+    setCommSaving(true); setCommStatus('');
+    const { error } = await supabase.from(table).insert({ ...payload, active: true });
+    setCommSaving(false);
+    if (error) { setCommStatus('Error: ' + error.message); }
+    else { setCommStatus('✓ Added!'); fetchCommunity(); setTimeout(() => setCommStatus(''), 3000); }
+  }
+
+  async function commToggle(table: string, id: string, active: boolean) {
+    await supabase.from(table).update({ active }).eq('id', id);
+    fetchCommunity();
+  }
+
+  async function commDelete(table: string, id: string) {
+    await supabase.from(table).delete().eq('id', id);
+    fetchCommunity();
   }
 
   async function fetchAdEnquiries() {
@@ -1563,6 +1608,238 @@ export default function AdminDashboard({ user }: { user: User }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Community ──────────────────────────────────────── */}
+        {tab === 'Community' && (
+          <div className="space-y-6">
+            {/* Sub-tab bar */}
+            <div className="flex gap-2 flex-wrap">
+              {(['Events','Jobs','Scholarships','Polls'] as const).map(t => (
+                <button key={t} onClick={() => setCommSubTab(t)}
+                  className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${commSubTab === t ? 'bg-ashanti-gold text-black shadow' : 'bg-brand-surface text-news-muted border border-news-border hover:text-ashanti-gold'}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {commStatus && (
+              <p className={`text-xs font-bold px-4 py-2.5 rounded-xl ${commStatus.startsWith('✓') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-500'}`}>{commStatus}</p>
+            )}
+
+            {/* ── EVENTS ── */}
+            {commSubTab === 'Events' && (
+              <div className="space-y-5">
+                <div className="bg-news-card border border-news-border rounded-2xl p-6 space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold">Add Event</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[['Title *','title','e.g. Kumasi Tech Summit'],['Date *','date','e.g. 14 July 2026'],['Location','location','e.g. KNUST Great Hall'],['Category','category','e.g. Technology']].map(([lbl,key,ph]) => (
+                      <div key={key}>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">{lbl}</label>
+                        <input value={(eventForm as any)[key]} onChange={e => setEventForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph}
+                          className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold" />
+                      </div>
+                    ))}
+                    <div className="sm:col-span-2">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Description</label>
+                      <textarea value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description…"
+                        className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold resize-none" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Image URL (optional)</label>
+                      <input value={eventForm.image_url} onChange={e => setEventForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://…"
+                        className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold" />
+                    </div>
+                  </div>
+                  <button disabled={commSaving || !eventForm.title.trim() || !eventForm.date.trim()}
+                    onClick={() => { commAdd('community_events', { ...eventForm }); setEventForm({ title:'', date:'', location:'', category:'Culture', description:'', image_url:'' }); }}
+                    className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:opacity-90 flex items-center gap-2">
+                    {commSaving && <Loader2 size={12} className="animate-spin" />} Add Event
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {commEvents.length === 0 && <p className="text-sm text-news-muted text-center py-6">No events yet.</p>}
+                  {commEvents.map(ev => (
+                    <div key={ev.id} className="flex items-center justify-between gap-3 bg-news-card border border-news-border rounded-xl px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-news-text truncate">{ev.title}</p>
+                        <p className="text-[10px] text-news-muted">{ev.date} · {ev.location}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ev.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{ev.active ? 'Active' : 'Hidden'}</span>
+                        <button onClick={() => commToggle('community_events', ev.id, !ev.active)} className="text-[9px] font-black uppercase tracking-widest text-ashanti-gold hover:opacity-70 transition-opacity">{ev.active ? 'Hide' : 'Show'}</button>
+                        <button onClick={() => commDelete('community_events', ev.id)} className="p-1.5 hover:bg-red-50 text-news-muted hover:text-red-500 rounded-lg transition-colors"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── JOBS ── */}
+            {commSubTab === 'Jobs' && (
+              <div className="space-y-5">
+                <div className="bg-news-card border border-news-border rounded-2xl p-6 space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold">Add Job</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[['Job Title *','title','e.g. Software Engineer'],['Company *','company','e.g. Kumasi Innovation Hub'],['Location','location','e.g. Kumasi / Remote'],['Category','category','e.g. Technology'],['Deadline','deadline','e.g. 30 June 2026'],['Apply URL','apply_url','https://…']].map(([lbl,key,ph]) => (
+                      <div key={key}>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">{lbl}</label>
+                        <input value={(jobForm as any)[key]} onChange={e => setJobForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph}
+                          className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold" />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Type</label>
+                      <select value={jobForm.type} onChange={e => setJobForm(f => ({ ...f, type: e.target.value }))}
+                        className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold appearance-none">
+                        {['Full-Time','Part-Time','Contract','Government','Internship'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <button disabled={commSaving || !jobForm.title.trim() || !jobForm.company.trim()}
+                    onClick={() => { commAdd('community_jobs', { ...jobForm }); setJobForm({ title:'', company:'', location:'', type:'Full-Time', deadline:'', category:'', apply_url:'' }); }}
+                    className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:opacity-90 flex items-center gap-2">
+                    {commSaving && <Loader2 size={12} className="animate-spin" />} Add Job
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {commJobs.length === 0 && <p className="text-sm text-news-muted text-center py-6">No jobs yet.</p>}
+                  {commJobs.map(jb => (
+                    <div key={jb.id} className="flex items-center justify-between gap-3 bg-news-card border border-news-border rounded-xl px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-news-text truncate">{jb.title}</p>
+                        <p className="text-[10px] text-news-muted">{jb.company} · {jb.type} · {jb.location}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${jb.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{jb.active ? 'Active' : 'Hidden'}</span>
+                        <button onClick={() => commToggle('community_jobs', jb.id, !jb.active)} className="text-[9px] font-black uppercase tracking-widest text-ashanti-gold hover:opacity-70">{jb.active ? 'Hide' : 'Show'}</button>
+                        <button onClick={() => commDelete('community_jobs', jb.id)} className="p-1.5 hover:bg-red-50 text-news-muted hover:text-red-500 rounded-lg transition-colors"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── SCHOLARSHIPS ── */}
+            {commSubTab === 'Scholarships' && (
+              <div className="space-y-5">
+                <div className="bg-news-card border border-news-border rounded-2xl p-6 space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold">Add Scholarship</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[['Title *','title','e.g. Otumfuo Foundation Scholarship'],['Funder *','funder','e.g. Manhyia Palace'],['Amount','amount','e.g. Full tuition + stipend'],['Deadline','deadline','e.g. 31 July 2026'],['Apply URL','apply_url','https://…']].map(([lbl,key,ph]) => (
+                      <div key={key}>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">{lbl}</label>
+                        <input value={(scholarForm as any)[key]} onChange={e => setScholarForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph}
+                          className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold" />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Level</label>
+                      <select value={scholarForm.level} onChange={e => setScholarForm(f => ({ ...f, level: e.target.value }))}
+                        className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold appearance-none">
+                        {['Undergraduate','Postgraduate','Undergraduate & Postgraduate','Vocational','Any'].map(l => <option key={l}>{l}</option>)}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Description</label>
+                      <textarea value={scholarForm.description} onChange={e => setScholarForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description…"
+                        className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold resize-none" />
+                    </div>
+                  </div>
+                  <button disabled={commSaving || !scholarForm.title.trim() || !scholarForm.funder.trim()}
+                    onClick={() => { commAdd('community_scholarships', { ...scholarForm }); setScholarForm({ title:'', funder:'', level:'Undergraduate', deadline:'', amount:'', description:'', apply_url:'' }); }}
+                    className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:opacity-90 flex items-center gap-2">
+                    {commSaving && <Loader2 size={12} className="animate-spin" />} Add Scholarship
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {commScholarships.length === 0 && <p className="text-sm text-news-muted text-center py-6">No scholarships yet.</p>}
+                  {commScholarships.map(sc => (
+                    <div key={sc.id} className="flex items-center justify-between gap-3 bg-news-card border border-news-border rounded-xl px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-news-text truncate">{sc.title}</p>
+                        <p className="text-[10px] text-news-muted">{sc.funder} · {sc.level} · Deadline: {sc.deadline}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${sc.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{sc.active ? 'Active' : 'Hidden'}</span>
+                        <button onClick={() => commToggle('community_scholarships', sc.id, !sc.active)} className="text-[9px] font-black uppercase tracking-widest text-ashanti-gold hover:opacity-70">{sc.active ? 'Hide' : 'Show'}</button>
+                        <button onClick={() => commDelete('community_scholarships', sc.id)} className="p-1.5 hover:bg-red-50 text-news-muted hover:text-red-500 rounded-lg transition-colors"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── POLLS ── */}
+            {commSubTab === 'Polls' && (
+              <div className="space-y-5">
+                <div className="bg-news-card border border-news-border rounded-2xl p-6 space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold">Add Poll</p>
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Question *</label>
+                    <input value={pollForm.question} onChange={e => setPollForm(f => ({ ...f, question: e.target.value }))} placeholder="e.g. Are you satisfied with road infrastructure?"
+                      className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(['opt1','opt2','opt3','opt4'] as const).map((k, i) => (
+                      <div key={k}>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Option {i+1}{i < 2 ? ' *' : ' (optional)'}</label>
+                        <input value={pollForm[k]} onChange={e => setPollForm(f => ({ ...f, [k]: e.target.value }))} placeholder={`Option ${i+1}`}
+                          className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold" />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    disabled={commSaving || !pollForm.question.trim() || !pollForm.opt1.trim() || !pollForm.opt2.trim()}
+                    onClick={() => {
+                      const opts = [pollForm.opt1, pollForm.opt2, pollForm.opt3, pollForm.opt4].filter(Boolean).map(label => ({ label, votes: 0 }));
+                      commAdd('community_polls', { question: pollForm.question.trim(), options: opts });
+                      setPollForm({ question:'', opt1:'', opt2:'', opt3:'', opt4:'' });
+                    }}
+                    className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:opacity-90 flex items-center gap-2">
+                    {commSaving && <Loader2 size={12} className="animate-spin" />} Add Poll
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {commPolls.length === 0 && <p className="text-sm text-news-muted text-center py-6">No polls yet.</p>}
+                  {commPolls.map(pl => {
+                    const opts: {label:string;votes:number}[] = pl.options || [];
+                    const total = opts.reduce((s: number, o: any) => s + (o.votes || 0), 0);
+                    return (
+                      <div key={pl.id} className="bg-news-card border border-news-border rounded-2xl p-5">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <p className="font-bold text-sm text-news-text">{pl.question}</p>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${pl.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{pl.active ? 'Active' : 'Hidden'}</span>
+                            <button onClick={() => commToggle('community_polls', pl.id, !pl.active)} className="text-[9px] font-black uppercase tracking-widest text-ashanti-gold hover:opacity-70">{pl.active ? 'Hide' : 'Show'}</button>
+                            <button onClick={() => commDelete('community_polls', pl.id)} className="p-1.5 hover:bg-red-50 text-news-muted hover:text-red-500 rounded-lg transition-colors"><Trash2 size={13} /></button>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          {opts.map((o, i) => {
+                            const pct = total > 0 ? Math.round((o.votes / total) * 100) : 0;
+                            return (
+                              <div key={i} className="flex items-center gap-2 text-xs text-news-muted">
+                                <div className="flex-1 bg-brand-surface rounded-full h-1.5 overflow-hidden">
+                                  <div className="h-full bg-ashanti-gold rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="w-24 truncate">{o.label}</span>
+                                <span className="font-bold w-8 text-right">{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-news-muted mt-2">{total.toLocaleString()} votes</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

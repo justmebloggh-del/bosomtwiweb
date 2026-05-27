@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Megaphone, Briefcase, GraduationCap, Calendar, Heart,
@@ -197,6 +198,26 @@ type Tab = 'events' | 'jobs' | 'scholarships' | 'polls';
 
 export default function CommunityPage({ onNavigate }: CommunityPageProps) {
   const [tab, setTab] = useState<Tab>('events');
+  const [dbEvents, setDbEvents] = useState<typeof EVENTS | null>(null);
+  const [dbJobs, setDbJobs] = useState<typeof JOBS | null>(null);
+  const [dbScholarships, setDbScholarships] = useState<typeof SCHOLARSHIPS | null>(null);
+  const [dbPolls, setDbPolls] = useState<typeof POLLS | null>(null);
+
+  useEffect(() => {
+    supabase.from('community_events').select('*').eq('active', true).order('created_at', { ascending: false })
+      .then(({ data }) => { if (data && data.length > 0) setDbEvents(data.map(e => ({ id: e.id, title: e.title, date: e.date, location: e.location, category: e.category, description: e.description, image: e.image_url || '' }))); });
+    supabase.from('community_jobs').select('*').eq('active', true).order('created_at', { ascending: false })
+      .then(({ data }) => { if (data && data.length > 0) setDbJobs(data.map(j => ({ id: j.id, title: j.title, company: j.company, location: j.location, type: j.type, deadline: j.deadline, category: j.category, apply_url: j.apply_url }))); });
+    supabase.from('community_scholarships').select('*').eq('active', true).order('created_at', { ascending: false })
+      .then(({ data }) => { if (data && data.length > 0) setDbScholarships(data.map(s => ({ id: s.id, title: s.title, funder: s.funder, level: s.level, deadline: s.deadline, amount: s.amount, description: s.description, apply_url: s.apply_url }))); });
+    supabase.from('community_polls').select('*').eq('active', true).order('created_at', { ascending: false })
+      .then(({ data }) => { if (data && data.length > 0) setDbPolls(data.map(p => ({ id: p.id, question: p.question, options: (p.options || []).map((o: any) => ({ label: o.label, pct: 0, votes: o.votes || 0 })), total: (p.options || []).reduce((s: number, o: any) => s + (o.votes || 0), 0) }))); });
+  }, []);
+
+  const events = dbEvents ?? EVENTS;
+  const jobs = dbJobs ?? JOBS;
+  const scholarships = dbScholarships ?? SCHOLARSHIPS;
+  const polls = dbPolls ?? POLLS;
 
   const TABS: { id: Tab; label: string; Icon: typeof Users }[] = [
     { id: 'events',       label: 'Events',       Icon: Calendar },
@@ -212,7 +233,7 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
         title="Community Hub"
         badge="Your Community"
         description="Events, jobs, scholarships, polls, and community voices from across the Bosomtwe District and Ashanti Region."
-        count={`${EVENTS.length} events · ${JOBS.length} jobs · ${SCHOLARSHIPS.length} scholarships`}
+        count={`${events.length} events · ${jobs.length} jobs · ${scholarships.length} scholarships`}
       />
 
       {/* ── Stats strip ──────────────────────────────────────── */}
@@ -220,9 +241,9 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {[
-              { Icon: Calendar,      label: 'Upcoming Events',   value: `${EVENTS.length}` },
-              { Icon: Briefcase,     label: 'Open Positions',    value: `${JOBS.length}` },
-              { Icon: GraduationCap, label: 'Scholarships',      value: `${SCHOLARSHIPS.length}` },
+              { Icon: Calendar,      label: 'Upcoming Events',   value: `${events.length}` },
+              { Icon: Briefcase,     label: 'Open Positions',    value: `${jobs.length}` },
+              { Icon: GraduationCap, label: 'Scholarships',      value: `${scholarships.length}` },
               { Icon: Users,         label: 'Community Members', value: '24K+' },
             ].map(({ Icon, label, value }) => (
               <div key={label} className="flex items-center gap-4">
@@ -253,7 +274,7 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
           {tab === 'events' && (
             <motion.div key="events" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {EVENTS.map(ev => (
+                {events.map(ev => (
                   <div key={ev.id} className="bg-news-card border border-news-border rounded-2xl overflow-hidden hover:border-ashanti-gold/40 hover:shadow-xl transition-all group">
                     <div className="relative aspect-video overflow-hidden">
                       <img src={ev.image} alt={ev.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -291,7 +312,7 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
           {tab === 'jobs' && (
             <motion.div key="jobs" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="space-y-4">
-                {JOBS.map(job => (
+                {jobs.map(job => (
                   <div key={job.id} className="bg-news-card border border-news-border rounded-2xl p-6 hover:border-ashanti-gold/40 transition-all group flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-ashanti-gold/10 rounded-xl flex items-center justify-center shrink-0">
@@ -336,7 +357,7 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
           {tab === 'scholarships' && (
             <motion.div key="scholarships" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="space-y-6">
-                {SCHOLARSHIPS.map(sc => (
+                {scholarships.map(sc => (
                   <div key={sc.id} className="bg-news-card border border-news-border rounded-2xl p-6 hover:border-ashanti-gold/40 transition-all group">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
@@ -394,7 +415,7 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
           {tab === 'polls' && (
             <motion.div key="polls" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {POLLS.map(poll => <Poll key={poll.id} poll={poll} />)}
+                {polls.map(poll => <Poll key={poll.id} poll={poll} />)}
               </div>
               <div className="mt-8 p-6 bg-brand-surface border border-news-border rounded-2xl text-center">
                 <BarChart2 size={20} className="text-ashanti-gold mx-auto mb-3" />
