@@ -74,6 +74,13 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [editAuthorForm, setEditAuthorForm] = useState({ name: '', role: '' });
   const [deletingAuthorId, setDeletingAuthorId] = useState<string | null>(null);
   const [authorStatus, setAuthorStatus] = useState('');
+  const [addAuthorForm, setAddAuthorForm] = useState({ name: '', email: '', role: 'journalist' });
+  const [addAuthorSaving, setAddAuthorSaving] = useState(false);
+
+  // Ads — edit in-place
+  const [editingAd, setEditingAd] = useState<any | null>(null);
+  const [editAdForm, setEditAdForm] = useState({ brand: '', tagline: '', cta_text: '', cta_url: '', logo: '', accent_color: '', placement: '', package_tier: '' });
+  const [deletingAdId, setDeletingAdId] = useState<string | null>(null);
 
   // Settings — general
   const [siteTitle, setSiteTitle] = useState('Bosomtwi Web');
@@ -370,6 +377,41 @@ export default function AdminDashboard({ user }: { user: User }) {
       fetchAuthors();
       setTimeout(() => setAuthorStatus(''), 3000);
     }
+  }
+
+  async function handleAddAuthor() {
+    if (!addAuthorForm.name.trim() || !addAuthorForm.email.trim()) return;
+    setAddAuthorSaving(true);
+    const { error } = await supabase.from('users').insert({
+      id:    crypto.randomUUID(),
+      name:  addAuthorForm.name.trim(),
+      email: addAuthorForm.email.trim().toLowerCase(),
+      role:  addAuthorForm.role,
+    });
+    setAddAuthorSaving(false);
+    if (error) {
+      setAuthorStatus('Failed to add: ' + error.message);
+    } else {
+      setAuthorStatus('✓ Author added. They must sign in once to activate their account.');
+      setAddAuthorForm({ name: '', email: '', role: 'journalist' });
+      fetchAuthors();
+      setTimeout(() => setAuthorStatus(''), 6000);
+    }
+  }
+
+  async function saveEditAd() {
+    if (!editingAd) return;
+    const { error } = await supabase.from('live_ads').update({
+      brand:        editAdForm.brand.trim(),
+      tagline:      editAdForm.tagline.trim(),
+      cta_text:     editAdForm.cta_text.trim() || 'Learn More',
+      cta_url:      editAdForm.cta_url.trim() || '#',
+      logo:         editAdForm.logo.trim() || '📢',
+      accent_color: editAdForm.accent_color,
+      placement:    editAdForm.placement,
+      package_tier: editAdForm.package_tier,
+    }).eq('id', editingAd.id);
+    if (!error) { setEditingAd(null); fetchLiveAds(); }
   }
 
   // Article count per author name (for Authors tab)
@@ -1275,29 +1317,121 @@ export default function AdminDashboard({ user }: { user: User }) {
               {/* Live ads list */}
               {liveAds.length > 0 && (
                 <div className="mt-6 space-y-3">
-                  <h3 className="text-sm font-bold text-news-text">Live Ads ({liveAds.length})</h3>
+                  <h3 className="text-sm font-bold text-news-text mb-3">Posted Ads ({liveAds.length})</h3>
                   {liveAds.map(ad => (
-                    <div key={ad.id} className="flex items-center justify-between gap-4 bg-news-card border border-news-border rounded-xl px-5 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xl shrink-0">{ad.logo}</span>
-                        <div className="min-w-0">
-                          <p className="font-bold text-news-text text-sm truncate">{ad.brand}</p>
-                          <p className="text-[10px] text-news-muted">{ad.placement} · {ad.package_tier}</p>
+                    <div key={ad.id} className="bg-news-card border border-news-border rounded-2xl overflow-hidden">
+                      {/* Row */}
+                      <div className="flex items-center justify-between gap-4 px-5 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {ad.logo?.startsWith('data:') || ad.logo?.startsWith('http')
+                            ? <img src={ad.logo} alt="" className="w-9 h-9 rounded-lg object-contain border border-news-border bg-white shrink-0" />
+                            : <span className="text-xl shrink-0">{ad.logo || '📢'}</span>}
+                          <div className="min-w-0">
+                            <p className="font-bold text-news-text text-sm truncate">{ad.brand}</p>
+                            <p className="text-[10px] text-news-muted">{ad.placement} · {ad.package_tier}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ad.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {ad.active ? 'Live' : 'Paused'}
+                          </span>
+                          {/* Edit */}
+                          <button
+                            onClick={() => { setEditingAd(editingAd?.id === ad.id ? null : ad); setEditAdForm({ brand: ad.brand, tagline: ad.tagline || '', cta_text: ad.cta_text || 'Learn More', cta_url: ad.cta_url || '', logo: ad.logo || '📢', accent_color: ad.accent_color || '#E09E2B', placement: ad.placement || 'leaderboard', package_tier: ad.package_tier || 'Bronze' }); setDeletingAdId(null); }}
+                            className={`p-1.5 rounded-lg transition-colors ${editingAd?.id === ad.id ? 'bg-ashanti-gold/20 text-ashanti-gold' : 'hover:bg-brand-surface text-news-muted hover:text-news-text'}`}
+                            title="Edit ad"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          {/* Pause / Resume */}
+                          <button
+                            onClick={() => toggleAdActive(ad.id, !ad.active)}
+                            className="p-1.5 rounded-lg hover:bg-brand-surface text-news-muted hover:text-ashanti-gold transition-colors"
+                            title={ad.active ? 'Pause ad' : 'Resume ad'}
+                          >
+                            {ad.active
+                              ? <span className="text-[9px] font-black uppercase tracking-widest">Pause</span>
+                              : <span className="text-[9px] font-black uppercase tracking-widest text-green-600">Resume</span>}
+                          </button>
+                          {/* Delete */}
+                          {deletingAdId === ad.id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-red-400 font-bold">Delete?</span>
+                              <button onClick={() => { deleteAd(ad.id); setDeletingAdId(null); }} className="px-2 py-1 text-[10px] font-bold text-white bg-red-500 rounded-lg hover:bg-red-600">Yes</button>
+                              <button onClick={() => setDeletingAdId(null)} className="px-2 py-1 text-[10px] font-bold text-news-muted bg-brand-surface rounded-lg">No</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setDeletingAdId(ad.id); setEditingAd(null); }} className="p-1.5 rounded-lg hover:bg-red-50 text-news-muted hover:text-red-500 transition-colors" title="Delete ad">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ad.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                          {ad.active ? 'Live' : 'Paused'}
-                        </span>
-                        <button onClick={() => toggleAdActive(ad.id, !ad.active)}
-                          className="text-[10px] font-bold text-ashanti-gold hover:text-news-text transition-colors uppercase tracking-widest">
-                          {ad.active ? 'Pause' : 'Resume'}
-                        </button>
-                        <button onClick={() => deleteAd(ad.id)}
-                          className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors uppercase tracking-widest">
-                          Delete
-                        </button>
-                      </div>
+
+                      {/* Inline edit form */}
+                      {editingAd?.id === ad.id && (
+                        <div className="border-t border-news-border bg-brand-surface px-5 py-4 space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Brand</label>
+                              <input value={editAdForm.brand} onChange={e => setEditAdForm(f => ({ ...f, brand: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Tagline</label>
+                              <input value={editAdForm.tagline} onChange={e => setEditAdForm(f => ({ ...f, tagline: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">CTA Text</label>
+                              <input value={editAdForm.cta_text} onChange={e => setEditAdForm(f => ({ ...f, cta_text: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">CTA URL</label>
+                              <input value={editAdForm.cta_url} onChange={e => setEditAdForm(f => ({ ...f, cta_url: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Logo (emoji or URL)</label>
+                              <input value={editAdForm.logo} onChange={e => setEditAdForm(f => ({ ...f, logo: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Accent Colour</label>
+                              <div className="flex items-center gap-2">
+                                <input type="color" value={editAdForm.accent_color} onChange={e => setEditAdForm(f => ({ ...f, accent_color: e.target.value }))}
+                                  className="w-9 h-9 rounded-lg border border-news-border cursor-pointer bg-white" />
+                                <span className="text-xs text-news-muted font-mono">{editAdForm.accent_color}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Placement</label>
+                              <select value={editAdForm.placement} onChange={e => setEditAdForm(f => ({ ...f, placement: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold">
+                                <option value="leaderboard">Leaderboard</option>
+                                <option value="rectangle">Rectangle</option>
+                                <option value="square">Square</option>
+                                <option value="wide">Wide Banner</option>
+                                <option value="all">All placements</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1">Package Tier</label>
+                              <select value={editAdForm.package_tier} onChange={e => setEditAdForm(f => ({ ...f, package_tier: e.target.value }))}
+                                className="w-full border border-news-border rounded-xl px-3 py-2 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold">
+                                {adPackages.map(p => <option key={p.name}>{p.name}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 justify-end pt-1">
+                            <button onClick={() => setEditingAd(null)}
+                              className="px-4 py-1.5 text-xs font-bold text-news-muted bg-news-card border border-news-border rounded-xl hover:bg-brand-surface transition-colors">Cancel</button>
+                            <button onClick={saveEditAd}
+                              className="px-4 py-1.5 text-xs font-bold text-black bg-ashanti-gold rounded-xl hover:opacity-90 transition-opacity">Save Changes</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1439,23 +1573,53 @@ export default function AdminDashboard({ user }: { user: User }) {
             {/* ── Authors management ─────────────────────────── */}
             <section className="bg-news-card rounded-2xl border border-news-border shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-news-border">
-                <h2 className="font-bold text-base">Authors</h2>
-                <p className="text-xs text-news-muted mt-0.5">
-                  Edit name or role, or remove author access.
-                </p>
+                <h2 className="font-bold text-base">Author Management</h2>
+                <p className="text-xs text-news-muted mt-0.5">Add new authors, edit name or role, or remove access.</p>
               </div>
 
-              <div className="px-6 pt-4">
-                {/* Info banner */}
-                <div className="bg-ashanti-green/20 border border-ashanti-gold/20 rounded-xl p-3 flex gap-2.5">
-                  <Info size={14} className="text-ashanti-gold shrink-0 mt-0.5" />
-                  <p className="text-xs text-news-text leading-relaxed">
-                    To add a new author, have them sign in with their email address. Their account will appear here automatically after first login.
-                  </p>
+              <div className="px-6 pt-5 pb-2 space-y-4">
+                {/* Add Author form */}
+                <div className="bg-brand-surface border border-news-border rounded-2xl p-5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold mb-4">Add New Author</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1.5">Full Name *</label>
+                      <input type="text" value={addAuthorForm.name}
+                        onChange={e => setAddAuthorForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="e.g. Kwame Mensah"
+                        className="w-full border border-news-border rounded-xl px-3 py-2.5 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1.5">Email Address *</label>
+                      <input type="email" value={addAuthorForm.email}
+                        onChange={e => setAddAuthorForm(f => ({ ...f, email: e.target.value }))}
+                        placeholder="author@email.com"
+                        className="w-full border border-news-border rounded-xl px-3 py-2.5 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-news-muted block mb-1.5">Role</label>
+                      <select value={addAuthorForm.role}
+                        onChange={e => setAddAuthorForm(f => ({ ...f, role: e.target.value }))}
+                        className="w-full border border-news-border rounded-xl px-3 py-2.5 text-sm bg-white text-news-text focus:outline-none focus:border-ashanti-gold appearance-none cursor-pointer">
+                        <option value="journalist">Journalist</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-4">
+                    <button
+                      onClick={handleAddAuthor}
+                      disabled={addAuthorSaving || !addAuthorForm.name.trim() || !addAuthorForm.email.trim()}
+                      className="flex items-center gap-2 px-5 py-2 bg-ashanti-gold text-black font-black text-xs uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40">
+                      {addAuthorSaving ? <Loader2 size={12} className="animate-spin" /> : null}
+                      Add Author
+                    </button>
+                    <p className="text-[10px] text-news-muted max-w-xs text-right">Author must sign in once with this email to activate their account.</p>
+                  </div>
                 </div>
 
                 {authorStatus && (
-                  <div className="mt-3 text-xs font-bold text-green-400 bg-green-900/20 border border-green-900/40 rounded-xl px-4 py-2.5">
+                  <div className={`text-xs font-bold rounded-xl px-4 py-2.5 ${authorStatus.startsWith('✓') ? 'text-green-700 bg-green-50 border border-green-200' : 'text-red-500 bg-red-50 border border-red-200'}`}>
                     {authorStatus}
                   </div>
                 )}
