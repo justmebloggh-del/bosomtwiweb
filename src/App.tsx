@@ -109,6 +109,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
 
   // ── Dynamic page title ───────────────────────────────────────
   useEffect(() => {
@@ -134,6 +135,43 @@ export default function App() {
   };
 
   useEffect(() => { loadArticles(); }, []);
+
+  // Deep-link on mount: read slug from URL before articles are loaded
+  useEffect(() => {
+    const path = window.location.pathname;
+    const m = path.match(/^\/article\/(.+)/);
+    if (m) setPendingSlug(decodeURIComponent(m[1]));
+  }, []);
+
+  // Resolve pending slug once articles are available
+  useEffect(() => {
+    if (!pendingSlug || articles.length === 0) return;
+    const article = articles.find(a => a.slug === pendingSlug);
+    if (article) { setSelectedArticle(article); setCurrentPage('article'); }
+    setPendingSlug(null);
+  }, [articles, pendingSlug]);
+
+  // Browser back/forward
+  useEffect(() => {
+    const onPopState = () => {
+      const path = window.location.pathname;
+      const m = path.match(/^\/article\/(.+)/);
+      if (m) {
+        const slug = decodeURIComponent(m[1]);
+        const article = articles.find(a => a.slug === slug);
+        if (article) { setSelectedArticle(article); setCurrentPage('article'); }
+      } else if (path.startsWith('/category/')) {
+        const cat = decodeURIComponent(path.replace('/category/', ''));
+        setActiveCategory(cat); setCurrentPage('category');
+      } else {
+        const page = (path.replace('/', '') || 'home') as Page;
+        setCurrentPage(page); setSelectedArticle(null);
+      }
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [articles]);
 
   useEffect(() => {
     if (!sessionStorage.getItem('bw_visited')) {
@@ -187,22 +225,30 @@ export default function App() {
   };
 
   const navigateToArticle = (article: Article) => {
+    history.pushState(null, '', '/article/' + encodeURIComponent(article.slug));
     setSelectedArticle(article);
     setCurrentPage('article');
     window.scrollTo(0, 0);
   };
 
   const handleCategorySelect = (category: string) => {
-    if (!category) { setCurrentPage('home'); setActiveCategory(''); }
-    else { setActiveCategory(category); setCurrentPage('category'); }
+    if (!category) {
+      history.pushState(null, '', '/');
+      setCurrentPage('home'); setActiveCategory('');
+    } else {
+      history.pushState(null, '', '/category/' + encodeURIComponent(category));
+      setActiveCategory(category); setCurrentPage('category');
+    }
     window.scrollTo(0, 0);
   };
 
   const handleNavigate = (page: string) => {
     const knownPages: Page[] = ['home','article','category','privacy','terms','advertise','trending','videos','live','archives','admin','login','community','contact','submit','about','careers','podcasts','editorials','factcheck','directory'];
     if (knownPages.includes(page as Page)) {
+      history.pushState(null, '', page === 'home' ? '/' : '/' + page);
       setCurrentPage(page as Page);
     } else {
+      history.pushState(null, '', '/');
       setCurrentPage('home');
     }
     window.scrollTo(0, 0);
@@ -256,7 +302,7 @@ export default function App() {
             )}
             {currentPage === 'article' && selectedArticle && (
               <motion.div key="article" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
-                <ArticleView article={selectedArticle} onBack={() => { setCurrentPage('home'); setSelectedArticle(null); }} relatedArticles={articles.filter(a => a.id !== selectedArticle.id)} onArticleClick={navigateToArticle} user={user} onArticleUpdated={loadArticles} />
+                <ArticleView article={selectedArticle} onBack={() => { history.pushState(null, '', '/'); setCurrentPage('home'); setSelectedArticle(null); }} relatedArticles={articles.filter(a => a.id !== selectedArticle.id)} onArticleClick={navigateToArticle} user={user} onArticleUpdated={loadArticles} />
               </motion.div>
             )}
             {currentPage === 'trending' && (
