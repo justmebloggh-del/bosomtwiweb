@@ -13,6 +13,8 @@ function toEmbedUrl(url: string): string {
   if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}?autoplay=1&rel=0`;
   const shortMatch = url.match(/youtu\.be\/([^?#]+)/);
   if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}?autoplay=1&rel=0`;
+  const pathMatch = url.match(/youtube\.com\/(?:live|shorts|v)\/([a-zA-Z0-9_-]+)/);
+  if (pathMatch) return `https://www.youtube.com/embed/${pathMatch[1]}?autoplay=1&rel=0`;
   return url;
 }
 
