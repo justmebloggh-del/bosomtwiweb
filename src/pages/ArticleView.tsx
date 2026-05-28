@@ -72,19 +72,61 @@ function renderInline(text: string): ReactNode {
   return parts.length ? <>{parts}</> : text;
 }
 
-function renderYouTubeEmbed(url: string, key: string): ReactElement {
-  let vid = '';
-  try {
-    vid = url.includes('youtu.be')
-      ? (url.split('/').pop()?.split('?')[0] ?? '')
-      : (new URLSearchParams(new URL(url).search).get('v') ?? '');
-  } catch { vid = ''; }
+type EmbedResult = { tag: 'iframe'; src: string } | { tag: 'video'; src: string };
+
+function resolveEmbed(url: string): EmbedResult {
+  if (/\.(mp4|webm|mov|avi|m4v)(\?.*)?$/i.test(url)) return { tag: 'video', src: url };
+
+  // YouTube
+  if (/youtube\.com|youtu\.be/i.test(url)) {
+    let vid = '';
+    try {
+      vid = url.includes('youtu.be')
+        ? (url.split('/').pop()?.split('?')[0] ?? '')
+        : (new URLSearchParams(new URL(url).search).get('v') ?? '');
+    } catch { /* ignore */ }
+    return { tag: 'iframe', src: `https://www.youtube.com/embed/${vid}?rel=0&modestbranding=1` };
+  }
+
+  // Vimeo
+  const vimeoM = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+  if (vimeoM) return { tag: 'iframe', src: `https://player.vimeo.com/video/${vimeoM[1]}?badge=0&autopause=0` };
+
+  // Dailymotion
+  const dmM = url.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);
+  if (dmM) return { tag: 'iframe', src: `https://www.dailymotion.com/embed/video/${dmM[1]}` };
+
+  // Facebook video / watch
+  if (/facebook\.com.*(video|watch|reel)/i.test(url)) {
+    return { tag: 'iframe', src: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&width=640&show_text=false&height=360` };
+  }
+
+  // TikTok
+  const tiktokM = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/i);
+  if (tiktokM) return { tag: 'iframe', src: `https://www.tiktok.com/embed/v2/${tiktokM[1]}` };
+
+  // Twitch clip
+  const twitchClipM = url.match(/clips\.twitch\.tv\/([a-zA-Z0-9_-]+)/);
+  if (twitchClipM) return { tag: 'iframe', src: `https://clips.twitch.tv/embed?clip=${twitchClipM[1]}&parent=${window.location.hostname}` };
+
+  // Twitch channel / VOD
+  const twitchM = url.match(/twitch\.tv\/([a-zA-Z0-9_]+)/);
+  if (twitchM) return { tag: 'iframe', src: `https://player.twitch.tv/?channel=${twitchM[1]}&parent=${window.location.hostname}` };
+
+  // Any other URL — attempt generic iframe
+  return { tag: 'iframe', src: url };
+}
+
+function renderVideoEmbed(url: string, key: string): ReactElement {
+  const embed = resolveEmbed(url);
   return (
-    <div key={key} className="my-8 rounded-2xl shadow-lg overflow-hidden aspect-video">
-      <iframe className="w-full h-full"
-        src={`https://www.youtube.com/embed/${vid}?rel=0&modestbranding=1`}
-        title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen style={{ border: 'none' }} />
+    <div key={key} className="my-8 rounded-2xl shadow-lg overflow-hidden aspect-video bg-gray-900">
+      {embed.tag === 'video'
+        ? <video src={embed.src} controls className="w-full h-full" />
+        : <iframe className="w-full h-full" src={embed.src}
+            title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen style={{ border: 'none' }} />
+      }
     </div>
   );
 }
@@ -108,16 +150,11 @@ function renderBody(content: string): ReactElement[] {
     }
     if (t.startsWith('[video]') && t.endsWith('[/video]')) {
       const url = t.slice(7, -8);
-      if (url) {
-        flush();
-        if (/youtube\.com|youtu\.be/i.test(url)) out.push(renderYouTubeEmbed(url, `yt${n++}`));
-        else out.push(<div key={`vid${n++}`} className="my-8 rounded-2xl shadow-lg overflow-hidden aspect-video bg-brand-surface"><video src={url} controls className="w-full h-full" /></div>);
-        continue;
-      }
+      if (url) { flush(); out.push(renderVideoEmbed(url, `vid${n++}`)); continue; }
     }
     if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(t)) { flush(); out.push(<figure key={`bimg${n++}`} className="my-8 rounded-2xl overflow-hidden shadow-lg"><img src={t} alt="" loading="lazy" className="w-full h-auto object-cover" /></figure>); continue; }
-    if (/^https?:\/\/.+\.(mp4|webm|mov|avi)(\?.*)?$/i.test(t)) { flush(); out.push(<div key={`bvid${n++}`} className="my-8 rounded-2xl shadow-lg overflow-hidden aspect-video bg-brand-surface"><video src={t} controls className="w-full h-full" /></div>); continue; }
-    if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/i.test(t)) { flush(); out.push(renderYouTubeEmbed(t, `byt${n++}`)); continue; }
+    if (/^https?:\/\/.+\.(mp4|webm|mov|avi|m4v)(\?.*)?$/i.test(t)) { flush(); out.push(renderVideoEmbed(t, `bvid${n++}`)); continue; }
+    if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com|twitch\.tv|clips\.twitch\.tv|facebook\.com)/i.test(t)) { flush(); out.push(renderVideoEmbed(t, `bvid${n++}`)); continue; }
     if (!t) { flush(); continue; }
     buf.push(lines[i]);
   }
@@ -406,27 +443,22 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
             </div>
 
             {/* Embedded video */}
-            {article.videoUrl && (
-              <div className="mt-10 mb-8 rounded-2xl shadow-xl overflow-hidden aspect-video bg-gray-100">
-                {article.videoUrl === 'LIVE_FEED' ? (
-                  <iframe className="w-full h-full"
-                    src="https://www.youtube.com/embed/wHmkUO1mkL0?si=bVrQuMSWbAjRcD1K"
-                    title="Live Feed" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen style={{ border: 'none' }} />
-                ) : article.videoUrl.includes('youtube.com') || article.videoUrl.includes('youtu.be') ? (
-                  <iframe className="w-full h-full"
-                    src={`https://www.youtube.com/embed/${
-                      article.videoUrl.includes('youtu.be')
-                        ? article.videoUrl.split('/').pop()
-                        : new URLSearchParams(new URL(article.videoUrl).search).get('v')
-                    }?rel=0&modestbranding=1`}
-                    title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen style={{ border: 'none' }} />
-                ) : (
-                  <video src={article.videoUrl} controls className="w-full h-full" />
-                )}
-              </div>
-            )}
+            {article.videoUrl && (() => {
+              const url = article.videoUrl === 'LIVE_FEED'
+                ? 'https://www.youtube.com/embed/wHmkUO1mkL0?si=bVrQuMSWbAjRcD1K'
+                : article.videoUrl;
+              const embed = resolveEmbed(url);
+              return (
+                <div className="mt-10 mb-8 rounded-2xl shadow-xl overflow-hidden aspect-video bg-gray-900">
+                  {embed.tag === 'video'
+                    ? <video src={embed.src} controls className="w-full h-full" />
+                    : <iframe className="w-full h-full" src={embed.src}
+                        title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen style={{ border: 'none' }} />
+                  }
+                </div>
+              );
+            })()}
 
             <AdBanner size="leaderboard" className="mt-8 mb-4" />
 
