@@ -77,13 +77,18 @@ type EmbedResult = { tag: 'iframe'; src: string } | { tag: 'video'; src: string 
 function resolveEmbed(url: string): EmbedResult {
   if (/\.(mp4|webm|mov|avi|m4v)(\?.*)?$/i.test(url)) return { tag: 'video', src: url };
 
-  // YouTube
+  // YouTube — handles watch?v=, youtu.be/, /live/, /shorts/, /embed/
   if (/youtube\.com|youtu\.be/i.test(url)) {
     let vid = '';
     try {
-      vid = url.includes('youtu.be')
-        ? (url.split('/').pop()?.split('?')[0] ?? '')
-        : (new URLSearchParams(new URL(url).search).get('v') ?? '');
+      const u = new URL(url);
+      if (u.searchParams.get('v')) {
+        vid = u.searchParams.get('v')!;
+      } else {
+        const m = u.pathname.match(/\/(?:live|shorts|embed|v)\/([a-zA-Z0-9_-]+)/);
+        if (m) vid = m[1];
+        else vid = u.pathname.split('/').pop()?.split('?')[0] ?? '';
+      }
     } catch { /* ignore */ }
     return { tag: 'iframe', src: `https://www.youtube.com/embed/${vid}?rel=0&modestbranding=1` };
   }
