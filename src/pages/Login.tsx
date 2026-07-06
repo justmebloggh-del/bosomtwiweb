@@ -30,66 +30,42 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
         .eq('id', authData.user.id)
         .single();
 
-      // If user profile not found, create it
+      // No profile row found by id — this happens the first time an
+      // admin-invited journalist logs in (their row was pre-created by
+      // email in AdminDashboard's "Add Author" flow, with a placeholder
+      // id), or for the single designated bootstrap admin account.
+      // Anyone else authenticating with no matching row gets denied —
+      // access must be granted by an existing admin, never self-granted.
       if (userError || !userData) {
-        // List of admin emails
-        const adminEmails = ['admin@bosomtwi.com'];
-        const isAdmin = adminEmails.includes(authData.user.email || '');
-        
-        // Disable RLS temporarily for user creation (using service role would be ideal)
-        // For now, use upsert with user's own credentials
-        const userProfile = {
-          id: authData.user.id,
-          email: authData.user.email,
-          name: authData.user.user_metadata?.full_name || authData.user.email || 'User',
-          role: isAdmin ? 'admin' : 'journalist',
-        };
-
-        // Try to insert first
-        let { data: insertData, error: insertError } = await supabase
+        const { data: existingByEmail } = await supabase
           .from('users')
-          .insert([userProfile])
-          .select()
+          .select('*')
+          .eq('email', authData.user.email)
           .single();
 
-        if (insertError) {
-          // If insert failed, try to fetch existing user by email
-          const { data: existingUser, error: fetchError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', authData.user.email)
-            .single();
-
-          if (existingUser) {
-            // User exists, use it and update role if needed
-            if (isAdmin && existingUser.role !== 'admin') {
-              const { error: updateError } = await supabase
-                .from('users')
-                .update({ role: 'admin' })
-                .eq('id', existingUser.id);
-              if (!updateError) {
-                existingUser.role = 'admin';
-              }
-            }
-            userData = existingUser;
-          } else if (fetchError) {
-            // User doesn't exist and insert failed - try to fetch by id one more time
-            const { data: userById } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', authData.user.id)
-              .single();
-            
-            if (userById) {
-              userData = userById;
-            } else {
-              throw new Error(`Failed to create user profile: ${insertError?.message || 'Unknown error'}`);
-            }
-          } else {
-            throw new Error('Failed to create user profile. Please contact admin.');
-          }
+        if (existingByEmail) {
+          userData = existingByEmail;
         } else {
-          userData = insertData;
+          const bootstrapAdminEmails = ['admin@bosomtwi.com'];
+          if (bootstrapAdminEmails.includes(authData.user.email || '')) {
+            const { data: inserted, error: insertError } = await supabase
+              .from('users')
+              .insert([{
+                id: authData.user.id,
+                email: authData.user.email,
+                name: authData.user.user_metadata?.full_name || authData.user.email || 'User',
+                role: 'admin',
+              }])
+              .select()
+              .single();
+            if (insertError || !inserted) {
+              throw new Error(`Failed to bootstrap admin profile: ${insertError?.message || 'Unknown error'}`);
+            }
+            userData = inserted;
+          } else {
+            await supabase.auth.signOut();
+            throw new Error('Access denied. Your account has not been added by an admin yet — contact admin@bosomtwi.com.');
+          }
         }
       }
 

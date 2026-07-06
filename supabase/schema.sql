@@ -1,6 +1,19 @@
 -- Run this once in your Supabase SQL Editor
 -- Dashboard → SQL Editor → New query → paste & run
 
+-- ── Role-check helpers (used by policies below; bodies aren't
+--    validated until first call, so it's fine that public.users
+--    doesn't exist yet at this point in the script) ────────────────
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin');
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('journalist', 'admin'));
+$$;
+
 -- ── Articles table ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.articles (
   id           TEXT PRIMARY KEY,
@@ -26,21 +39,25 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- NOTE: article mutation policies require an actual journalist/admin
+-- role (see public.is_staff() above) — "authenticated" alone is not
+-- enough. See rls_hardening.sql for the history of why (self-registration
+-- must never grant publish access).
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can insert articles') THEN
-    CREATE POLICY "Authenticated users can insert articles" ON public.articles FOR INSERT TO authenticated WITH CHECK (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Journalists and admins can insert articles') THEN
+    CREATE POLICY "Journalists and admins can insert articles" ON public.articles FOR INSERT TO authenticated WITH CHECK (public.is_staff());
   END IF;
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can update articles') THEN
-    CREATE POLICY "Authenticated users can update articles" ON public.articles FOR UPDATE TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Journalists and admins can update articles') THEN
+    CREATE POLICY "Journalists and admins can update articles" ON public.articles FOR UPDATE TO authenticated USING (public.is_staff());
   END IF;
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can delete articles') THEN
-    CREATE POLICY "Authenticated users can delete articles" ON public.articles FOR DELETE TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Journalists and admins can delete articles') THEN
+    CREATE POLICY "Journalists and admins can delete articles" ON public.articles FOR DELETE TO authenticated USING (public.is_staff());
   END IF;
 END $$;
 
@@ -155,10 +172,11 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Enable RLS for users table
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Allow users to insert their own profile
+-- Only admins can create new user rows (self-registration must never
+-- grant access — see rls_hardening.sql for why).
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can insert their own profile') THEN
-    CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (id = auth.uid()::uuid);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Admins can insert users') THEN
+    CREATE POLICY "Admins can insert users" ON public.users FOR INSERT TO authenticated WITH CHECK (public.is_admin());
   END IF;
 END $$;
 
@@ -169,10 +187,20 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Allow users to update their own profile
+-- Users may update their own name, but not their own role.
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can update their own profile') THEN
-    CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING (id = auth.uid()::uuid) WITH CHECK (id = auth.uid()::uuid);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can update own profile except role') THEN
+    CREATE POLICY "Users can update own profile except role" ON public.users FOR UPDATE TO authenticated
+      USING (id = auth.uid())
+      WITH CHECK (id = auth.uid() AND role = (SELECT u.role FROM public.users u WHERE u.id = auth.uid()));
+  END IF;
+END $$;
+
+-- Admins can update any user, including role changes.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Admins can update any user') THEN
+    CREATE POLICY "Admins can update any user" ON public.users FOR UPDATE TO authenticated
+      USING (public.is_admin()) WITH CHECK (public.is_admin());
   END IF;
 END $$;
 
@@ -257,21 +285,27 @@ GRANT EXECUTE ON FUNCTION public.increment_article_views(text) TO anon, authenti
 -- Run these in the Supabase SQL Editor AFTER creating the bucket
 -- via Dashboard → Storage → New bucket (name: article-images, Public: ON)
 
--- Allow authenticated users to upload images
+-- Only journalists/admins can upload images
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'storage' AND tablename = 'objects'
-      AND policyname = 'Auth users can upload article images'
+      AND policyname = 'Staff can upload article images'
   ) THEN
     EXECUTE $policy$
-      CREATE POLICY "Auth users can upload article images"
+      CREATE POLICY "Staff can upload article images"
         ON storage.objects FOR INSERT TO authenticated
-        WITH CHECK (bucket_id = 'article-images');
+        WITH CHECK (bucket_id = 'article-images' AND public.is_staff());
     $policy$;
   END IF;
 END $$;
+
+-- File-size/type limits belong on the bucket itself (10MB cap, images only)
+UPDATE storage.buckets
+SET file_size_limit = 10485760,
+    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+WHERE id = 'article-images';
 
 DO $$
 BEGIN
