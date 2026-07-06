@@ -88,8 +88,8 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
 
           {/* Col 1: Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <button onClick={() => onCategoryClick?.('')} className="block mb-5">
-              <img src="/logo.png" alt="BOSOMTWIWEB" className="h-12 w-auto object-contain brightness-0 invert" />
+            <button onClick={() => onCategoryClick?.('')} className="inline-block mb-5 bg-white rounded-xl p-2 shadow-md">
+              <img src="/logo.png" alt="BOSOMTWIWEB" className="h-12 w-auto object-contain" />
             </button>
             <p className="text-white/40 text-sm leading-relaxed mb-6 italic">
               YOUR VOICE. OUR MISSION. — The premier digital media platform for Bosomtwe, the Ashanti Region, and beyond.
