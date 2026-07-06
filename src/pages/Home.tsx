@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, optimizedImageUrl } from '../lib/supabase';
 import ArticleCard from '../components/ArticleCard';
 import AdBanner from '../components/AdBanner';
 import { Article } from '../types';
@@ -75,7 +75,7 @@ function CategorySection({ cat, articles, onArticleClick, onCategoryClick }: {
           {/* Lead story */}
           <div className="lg:col-span-2 cursor-pointer group" onClick={() => onArticleClick(lead)}>
             <div className="relative overflow-hidden rounded-2xl aspect-[16/9] bg-gray-200 mb-4">
-              <img src={lead.image} alt={lead.title}
+              <img src={optimizedImageUrl(lead.image, 900)} alt={lead.title} loading="lazy"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
               <div className="news-banner-overlay absolute inset-0" />
               <div className="absolute top-4 left-4">
@@ -101,7 +101,7 @@ function CategorySection({ cat, articles, onArticleClick, onCategoryClick }: {
               <div key={a.id} onClick={() => onArticleClick(a)}
                 className="group cursor-pointer flex gap-4 items-start p-3 rounded-xl hover:bg-brand-surface transition-colors">
                 <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                  <img src={a.image} alt={a.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <img src={optimizedImageUrl(a.image, 160)} alt={a.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 </div>
                 <div className="min-w-0">
                   <span className="text-[9px] font-black uppercase tracking-wider text-ashanti-gold block mb-1">{a.category}</span>
@@ -194,7 +194,7 @@ function HeroSlider({ articles, onArticleClick }: { articles: Article[]; onArtic
           transition={{ duration: 0.7, ease: 'easeInOut' }}
           className="relative aspect-[21/9] md:aspect-[3/1] lg:aspect-[4/1.2] cursor-pointer"
           onClick={() => onArticleClick(slide)}>
-          <img src={slide.image} alt={slide.title} className="w-full h-full object-cover opacity-60" />
+          <img src={optimizedImageUrl(slide.image, 1600, 80)} alt={slide.title} loading="eager" fetchPriority="high" className="w-full h-full object-cover opacity-60" />
           <div className="news-banner-overlay absolute inset-0" />
 
           {/* Content */}
@@ -505,7 +505,7 @@ export default function Home({ onArticleClick, articles, onCategoryClick, onNavi
               {videoArticles.slice(0, 6).map(a => (
                 <div key={a.id} onClick={() => onArticleClick(a)} className="cursor-pointer group card-hover">
                   <div className="relative rounded-xl overflow-hidden aspect-video bg-black mb-3">
-                    <img src={a.image} alt={a.title} className="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
+                    <img src={optimizedImageUrl(a.image, 500)} alt={a.title} loading="lazy" className="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-14 h-14 bg-ashanti-gold rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                         <Play size={22} fill="currentColor" className="text-black ml-1" />
@@ -596,7 +596,7 @@ export default function Home({ onArticleClick, articles, onCategoryClick, onNavi
                   <div key={a.id} onClick={() => onArticleClick(a)}
                     className="group cursor-pointer flex gap-3 p-2.5 rounded-xl hover:bg-brand-surface transition-colors">
                     <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0">
-                      <img src={a.image} alt={a.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <img src={optimizedImageUrl(a.image, 150)} alt={a.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     <div className="min-w-0">
                       <span className="text-[9px] font-black uppercase tracking-wider text-ashanti-gold block mb-0.5">{a.category}</span>

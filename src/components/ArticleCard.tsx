@@ -1,5 +1,6 @@
 import { Article } from '../types';
 import { Clock, ArrowUpRight, Play } from 'lucide-react';
+import { optimizedImageUrl } from '../lib/supabase';
 
 interface ArticleCardProps {
   article: Article;
@@ -20,7 +21,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
   if (variant === 'cinematic') {
     return (
       <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-gray-200 rounded-2xl">
-        <img src={article.image} alt={article.title}
+        <img src={optimizedImageUrl(article.image, 1200)} alt={article.title} loading="lazy"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-70" />
         <div className="news-banner-overlay absolute inset-0 rounded-2xl" />
         <div className="absolute bottom-0 p-8 w-full">
@@ -48,7 +49,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
   if (variant === 'large') {
     return (
       <div className="group relative h-[500px] overflow-hidden cursor-pointer bg-gray-200 rounded-2xl">
-        <img src={article.image} alt={article.title}
+        <img src={optimizedImageUrl(article.image, 1200)} alt={article.title} loading="lazy"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-65" />
         <div className="news-banner-overlay absolute inset-0 rounded-2xl" />
         <div className="absolute bottom-0 p-8 w-full">
@@ -72,7 +73,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
     return (
       <div className="flex gap-4 items-start group cursor-pointer border-b border-news-border pb-5 last:border-0">
         <div className="w-24 h-24 rounded-xl shrink-0 overflow-hidden bg-brand-surface border border-news-border">
-          <img src={article.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-90 group-hover:opacity-100" alt={article.title} />
+          <img src={optimizedImageUrl(article.image, 200)} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-90 group-hover:opacity-100" alt={article.title} />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[9px] uppercase tracking-widest font-black text-ashanti-gold block mb-1">{article.category}</span>
@@ -93,7 +94,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
     return (
       <div className="group cursor-pointer flex gap-3">
         <div className="w-16 h-16 rounded-lg shrink-0 overflow-hidden bg-brand-surface">
-          <img src={article.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={article.title} />
+          <img src={optimizedImageUrl(article.image, 150)} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={article.title} />
         </div>
         <div className="min-w-0">
           <span className="text-[9px] uppercase tracking-widest font-black text-ashanti-gold block mb-0.5">{article.category}</span>
@@ -109,7 +110,7 @@ export default function ArticleCard({ article, variant = 'medium' }: ArticleCard
   return (
     <div className="bg-news-card rounded-2xl overflow-hidden border border-news-border card-glass hover:border-ashanti-gold/50 group cursor-pointer flex flex-col h-full">
       <div className="relative overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
-        <img src={article.image} alt={article.title}
+        <img src={optimizedImageUrl(article.image, 600)} alt={article.title} loading="lazy"
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
 
         {/* Gradient overlay */}

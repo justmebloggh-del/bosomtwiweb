@@ -79,9 +79,27 @@ function getAdIndex(seed: number, pool: number) {
   return seed % pool;
 }
 
-// Module-level cache so all AdBanner instances share one fetch
+// Module-level cache so all AdBanner instances share one fetch. Several
+// AdBanner instances typically mount at the same time (leaderboard +
+// sidebar + in-feed ads on one page); without the in-flight promise below,
+// each one fired its own identical `live_ads` request before any of them
+// had populated the cache — 4 duplicate ~95KB fetches on a single article
+// page load.
 let _liveAds: any[] | null = null;
 let _fetchedAt = 0;
+let _fetchPromise: Promise<any[]> | null = null;
+
+function fetchLiveAds(): Promise<any[]> {
+  if (_liveAds && Date.now() - _fetchedAt < 300_000) return Promise.resolve(_liveAds);
+  if (_fetchPromise) return _fetchPromise;
+  _fetchPromise = Promise.resolve(supabase.from('live_ads').select('*').eq('active', true)).then(({ data }) => {
+    _liveAds = data || [];
+    _fetchedAt = Date.now();
+    _fetchPromise = null;
+    return _liveAds;
+  });
+  return _fetchPromise;
+}
 
 function mapLiveAd(a: any) {
   return {
@@ -108,15 +126,11 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
   const [liveAds, setLiveAds] = useState<typeof ADS>(_liveAds ? _liveAds.map(mapLiveAd) : []);
 
   useEffect(() => {
-    if (_liveAds && Date.now() - _fetchedAt < 300_000) {
-      setLiveAds(_liveAds.map(mapLiveAd));
-      return;
-    }
-    supabase.from('live_ads').select('*').eq('active', true).then(({ data }) => {
-      _liveAds = data || [];
-      _fetchedAt = Date.now();
-      setLiveAds(_liveAds.map(mapLiveAd));
+    let cancelled = false;
+    fetchLiveAds().then(ads => {
+      if (!cancelled) setLiveAds(ads.map(mapLiveAd));
     });
+    return () => { cancelled = true; };
   }, []);
 
   const slot = Math.floor(Date.now() / 60000) + (size === 'leaderboard' ? 0 : size === 'wide' ? 2 : size === 'square' ? 4 : 1);

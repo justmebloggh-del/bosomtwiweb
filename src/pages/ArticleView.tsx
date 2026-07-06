@@ -25,7 +25,7 @@ function XIcon({ size = 15 }: { size?: number }) {
 import AdBanner from '../components/AdBanner';
 import ReadingProgress from '../components/ReadingProgress';
 import PublishModal from '../components/PublishModal';
-import { supabase } from '../lib/supabase';
+import { supabase, optimizedImageUrl } from '../lib/supabase';
 
 interface ArticleViewProps {
   article: Article;
@@ -34,6 +34,7 @@ interface ArticleViewProps {
   onArticleClick: (article: Article) => void;
   user?: User | null;
   onArticleUpdated?: () => void;
+  contentLoading?: boolean;
 }
 
 interface Comment {
@@ -151,13 +152,13 @@ function renderBody(content: string): ReactElement[] {
     const t = lines[i].trim();
     if (t.startsWith('[image]') && t.endsWith('[/image]')) {
       const url = t.slice(7, -8);
-      if (url) { flush(); out.push(<figure key={`img${n++}`} className="my-8 rounded-2xl overflow-hidden shadow-lg"><img src={url} alt="" loading="lazy" className="w-full h-auto object-cover" /></figure>); continue; }
+      if (url) { flush(); out.push(<figure key={`img${n++}`} className="my-8 rounded-2xl overflow-hidden shadow-lg"><img src={optimizedImageUrl(url, 900)} alt="" loading="lazy" className="w-full h-auto object-cover" /></figure>); continue; }
     }
     if (t.startsWith('[video]') && t.endsWith('[/video]')) {
       const url = t.slice(7, -8);
       if (url) { flush(); out.push(renderVideoEmbed(url, `vid${n++}`)); continue; }
     }
-    if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(t)) { flush(); out.push(<figure key={`bimg${n++}`} className="my-8 rounded-2xl overflow-hidden shadow-lg"><img src={t} alt="" loading="lazy" className="w-full h-auto object-cover" /></figure>); continue; }
+    if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(t)) { flush(); out.push(<figure key={`bimg${n++}`} className="my-8 rounded-2xl overflow-hidden shadow-lg"><img src={optimizedImageUrl(t, 900)} alt="" loading="lazy" className="w-full h-auto object-cover" /></figure>); continue; }
     if (/^https?:\/\/.+\.(mp4|webm|mov|avi|m4v)(\?.*)?$/i.test(t)) { flush(); out.push(renderVideoEmbed(t, `bvid${n++}`)); continue; }
     if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com|twitch\.tv|clips\.twitch\.tv|facebook\.com)/i.test(t)) { flush(); out.push(renderVideoEmbed(t, `bvid${n++}`)); continue; }
     if (!t) { flush(); continue; }
@@ -205,7 +206,7 @@ function NarrationButton({ text }: { text: string }) {
 
 // ────────────────────────────────────────────────────────────────
 
-export default function ArticleView({ article, onBack, relatedArticles, onArticleClick, user, onArticleUpdated }: ArticleViewProps) {
+export default function ArticleView({ article, onBack, relatedArticles, onArticleClick, user, onArticleUpdated, contentLoading }: ArticleViewProps) {
   const [copied, setCopied] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -426,7 +427,7 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
 
             {/* Cover image */}
             <div className="relative rounded-2xl overflow-hidden aspect-video mb-10 bg-brand-surface shadow-xl">
-              <img src={article.image} alt={article.title} loading="eager"
+              <img src={optimizedImageUrl(article.image, 1200, 80)} alt={article.title} loading="eager" fetchPriority="high"
                 className="w-full h-full object-cover" />
             </div>
 
@@ -442,7 +443,13 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
               <div className="space-y-0">
                 {article.content
                   ? renderBody(article.content)
-                  : <p className="text-news-muted italic">Full article body not available.</p>
+                  : contentLoading
+                    ? <div className="space-y-3 animate-pulse">
+                        <div className="h-4 bg-news-border rounded w-full" />
+                        <div className="h-4 bg-news-border rounded w-11/12" />
+                        <div className="h-4 bg-news-border rounded w-4/5" />
+                      </div>
+                    : <p className="text-news-muted italic">Full article body not available.</p>
                 }
               </div>
             </div>
@@ -559,7 +566,7 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
                   <div key={rel.id} onClick={() => onArticleClick(rel)}
                     className="group cursor-pointer flex gap-3 items-start p-2 rounded-xl hover:bg-brand-surface transition-colors">
                     <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-news-border">
-                      <img src={rel.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rel.title} />
+                      <img src={optimizedImageUrl(rel.image, 150)} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rel.title} />
                     </div>
                     <div className="min-w-0">
                       <span className="text-[9px] font-black uppercase tracking-widest text-ashanti-gold block mb-0.5">{rel.category}</span>

@@ -110,6 +110,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
 
   // ── Dynamic page title ───────────────────────────────────────
   useEffect(() => {
@@ -121,17 +122,37 @@ export default function App() {
     }
   }, [currentPage, activeCategory]);
 
+  // `content` is excluded here on purpose — it's the heaviest field by far
+  // (full article bodies for every article, on every page load) and none of
+  // the list/card views render it. It's fetched on demand in openArticle()
+  // below, only for the one article a reader actually opens.
   const loadArticles = () => {
     setIsLoadingArticles(true);
     supabase
       .from('articles')
-      .select('*')
+      .select('id,title,slug,category,author,published_at,excerpt,image,video_url,views,status')
       .order('published_at', { ascending: false })
       .then(({ data, error }) => {
         if (error) console.error('[Bosomtwi] Failed to load articles:', error.message);
         setArticles(Array.isArray(data) ? data.map(dbToArticle) : []);
         setIsLoadingArticles(false);
       });
+  };
+
+  // Opens an article immediately using the lightweight data already in
+  // memory (title/image/excerpt render instantly), then fetches the full
+  // row — including `content` — and merges it in once it arrives.
+  const openArticle = async (article: Article) => {
+    setSelectedArticle(article);
+    setCurrentPage('article');
+    setContentLoading(true);
+    try {
+      const { data, error } = await supabase.from('articles').select('*').eq('id', article.id).single();
+      if (error) { console.error('[Bosomtwi] Failed to load article content:', error.message); return; }
+      if (data) setSelectedArticle(prev => (prev && prev.id === article.id ? dbToArticle(data) : prev));
+    } finally {
+      setContentLoading(false);
+    }
   };
 
   useEffect(() => { loadArticles(); }, []);
@@ -147,7 +168,7 @@ export default function App() {
   useEffect(() => {
     if (!pendingSlug || articles.length === 0) return;
     const article = articles.find(a => a.slug === pendingSlug);
-    if (article) { setSelectedArticle(article); setCurrentPage('article'); }
+    if (article) openArticle(article);
     setPendingSlug(null);
   }, [articles, pendingSlug]);
 
@@ -159,7 +180,7 @@ export default function App() {
       if (m) {
         const slug = decodeURIComponent(m[1]);
         const article = articles.find(a => a.slug === slug);
-        if (article) { setSelectedArticle(article); setCurrentPage('article'); }
+        if (article) openArticle(article);
       } else if (path.startsWith('/category/')) {
         const cat = decodeURIComponent(path.replace('/category/', ''));
         setActiveCategory(cat); setCurrentPage('category');
@@ -226,8 +247,7 @@ export default function App() {
 
   const navigateToArticle = (article: Article) => {
     history.pushState(null, '', '/article/' + encodeURIComponent(article.slug));
-    setSelectedArticle(article);
-    setCurrentPage('article');
+    openArticle(article);
     window.scrollTo(0, 0);
   };
 
@@ -302,7 +322,7 @@ export default function App() {
             )}
             {currentPage === 'article' && selectedArticle && (
               <motion.div key="article" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
-                <ArticleView article={selectedArticle} onBack={() => { history.pushState(null, '', '/'); setCurrentPage('home'); setSelectedArticle(null); }} relatedArticles={articles.filter(a => a.id !== selectedArticle.id)} onArticleClick={navigateToArticle} user={user} onArticleUpdated={loadArticles} />
+                <ArticleView article={selectedArticle} onBack={() => { history.pushState(null, '', '/'); setCurrentPage('home'); setSelectedArticle(null); }} relatedArticles={articles.filter(a => a.id !== selectedArticle.id)} onArticleClick={navigateToArticle} user={user} onArticleUpdated={loadArticles} contentLoading={contentLoading} />
               </motion.div>
             )}
             {currentPage === 'trending' && (
