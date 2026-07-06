@@ -13,6 +13,10 @@
 -- Helper: is the currently-authenticated user an admin?
 -- SECURITY DEFINER so it can read public.users regardless of the
 -- caller's own RLS visibility (mirrors increment_site_visits() below).
+-- Cast both sides to text below: public.users.id doesn't match
+-- auth.uid()'s type cleanly in this project's actual schema (observed
+-- "operator does not exist: text = uuid" with a bare comparison), so
+-- text on both sides is the safe, unambiguous option.
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE sql
@@ -20,7 +24,7 @@ SECURITY DEFINER
 STABLE
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role = 'admin'
   );
 $$;
 
@@ -31,7 +35,7 @@ SECURITY DEFINER
 STABLE
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('journalist', 'admin')
+    SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role IN ('journalist', 'admin')
   );
 $$;
 
@@ -48,10 +52,10 @@ CREATE POLICY "Admins can insert users" ON public.users
 -- Users may update their own name, but not their own role.
 CREATE POLICY "Users can update own profile except role" ON public.users
   FOR UPDATE TO authenticated
-  USING (id = auth.uid())
+  USING (id::text = auth.uid()::text)
   WITH CHECK (
-    id = auth.uid()
-    AND role = (SELECT u.role FROM public.users u WHERE u.id = auth.uid())
+    id::text = auth.uid()::text
+    AND role = (SELECT u.role FROM public.users u WHERE u.id::text = auth.uid()::text)
   );
 
 -- Admins can update any user, including role changes.

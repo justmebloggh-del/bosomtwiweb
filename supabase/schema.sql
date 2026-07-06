@@ -3,15 +3,17 @@
 
 -- ── Role-check helpers (used by policies below; bodies aren't
 --    validated until first call, so it's fine that public.users
---    doesn't exist yet at this point in the script) ────────────────
+--    doesn't exist yet at this point in the script). Cast both sides
+--    to text: some deployments of this schema have users.id as text
+--    rather than uuid, and a bare comparison errors in that case.
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin');
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role = 'admin');
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_staff()
 RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('journalist', 'admin'));
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role IN ('journalist', 'admin'));
 $$;
 
 -- ── Articles table ───────────────────────────────────────────────
@@ -191,8 +193,8 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can update own profile except role') THEN
     CREATE POLICY "Users can update own profile except role" ON public.users FOR UPDATE TO authenticated
-      USING (id = auth.uid())
-      WITH CHECK (id = auth.uid() AND role = (SELECT u.role FROM public.users u WHERE u.id = auth.uid()));
+      USING (id::text = auth.uid()::text)
+      WITH CHECK (id::text = auth.uid()::text AND role = (SELECT u.role FROM public.users u WHERE u.id::text = auth.uid()::text));
   END IF;
 END $$;
 
