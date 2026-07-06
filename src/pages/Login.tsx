@@ -16,61 +16,29 @@ export default function Login({ onLoginSuccess }: { onLoginSuccess: (user: any) 
 
     try {
       // Authenticate user
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError) throw new Error(authError.message);
 
-      // Fetch user profile from users table
-      let { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
+      // claim_user_profile() (see supabase/fix_user_id_reconciliation.sql)
+      // finds/reconciles this account's public.users row server-side —
+      // it links an admin-invited placeholder row to the real auth.uid()
+      // on first login, or bootstraps the one designated admin account.
+      // Returns null if no admin has ever added this person.
+      const { data: userData, error: claimError } = await supabase.rpc('claim_user_profile');
+      if (claimError) throw new Error(claimError.message);
 
-      // No profile row found by id — this happens the first time an
-      // admin-invited journalist logs in (their row was pre-created by
-      // email in AdminDashboard's "Add Author" flow, with a placeholder
-      // id), or for the single designated bootstrap admin account.
-      // Anyone else authenticating with no matching row gets denied —
-      // access must be granted by an existing admin, never self-granted.
-      if (userError || !userData) {
-        const { data: existingByEmail } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', authData.user.email)
-          .single();
-
-        if (existingByEmail) {
-          userData = existingByEmail;
-        } else {
-          const bootstrapAdminEmails = ['admin@bosomtwi.com'];
-          if (bootstrapAdminEmails.includes(authData.user.email || '')) {
-            const { data: inserted, error: insertError } = await supabase
-              .from('users')
-              .insert([{
-                id: authData.user.id,
-                email: authData.user.email,
-                name: authData.user.user_metadata?.full_name || authData.user.email || 'User',
-                role: 'admin',
-              }])
-              .select()
-              .single();
-            if (insertError || !inserted) {
-              throw new Error(`Failed to bootstrap admin profile: ${insertError?.message || 'Unknown error'}`);
-            }
-            userData = inserted;
-          } else {
-            await supabase.auth.signOut();
-            throw new Error('Access denied. Your account has not been added by an admin yet — contact admin@bosomtwi.com.');
-          }
-        }
+      if (!userData) {
+        await supabase.auth.signOut();
+        throw new Error('Access denied. Your account has not been added by an admin yet — contact admin@bosomtwi.com.');
       }
 
       // Check if user has journalist or admin access
       if (userData.role !== 'journalist' && userData.role !== 'admin') {
+        await supabase.auth.signOut();
         throw new Error('Access denied. Only journalists and admins can log in.');
       }
 

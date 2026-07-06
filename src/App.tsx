@@ -202,23 +202,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setUser(sessionToUser(session.user));
-    });
+    // Resolves the authoritative public.users row (id, name, role) via
+    // claim_user_profile() rather than trusting the session's
+    // client-editable user_metadata — also means a stale/mismatched id
+    // from before the RLS reconciliation fix self-heals on next reload,
+    // no explicit re-login required.
+    const resolveUser = async (sessionUser: unknown) => {
+      if (!sessionUser) { setUser(null); return; }
+      const { data, error } = await supabase.rpc('claim_user_profile');
+      if (error || !data) { setUser(null); return; }
+      setUser({ id: data.id, email: data.email, name: data.name, role: data.role });
+    };
+    supabase.auth.getSession().then(({ data: { session } }) => resolveUser(session?.user));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ? sessionToUser(session.user) : null);
+      resolveUser(session?.user);
     });
     return () => subscription.unsubscribe();
   }, []);
-
-  function sessionToUser(u: any): User {
-    return {
-      id: u.id,
-      email: u.email ?? '',
-      name: u.user_metadata?.name || u.email?.split('@')[0] || 'Journalist',
-      role: u.user_metadata?.role || 'journalist',
-    };
-  }
 
   const handleLogin = async (e: { preventDefault(): void }) => {
     e.preventDefault();

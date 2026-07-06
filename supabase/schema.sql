@@ -16,6 +16,55 @@ RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role IN ('journalist', 'admin'));
 $$;
 
+-- Reconciles an admin-invited user's placeholder id (set by
+-- AdminDashboard's "Add Author", before that person has ever signed
+-- in) to their real auth.uid() on login — see
+-- fix_user_id_reconciliation.sql for why this has to run as
+-- SECURITY DEFINER rather than a plain client-side update.
+CREATE OR REPLACE FUNCTION public.claim_user_profile()
+RETURNS public.users
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_uid   text := auth.uid()::text;
+  v_email text;
+  v_name  text;
+  v_row   public.users;
+BEGIN
+  SELECT * INTO v_row FROM public.users WHERE id::text = v_uid;
+  IF FOUND THEN
+    RETURN v_row;
+  END IF;
+
+  SELECT email, COALESCE(raw_user_meta_data->>'full_name', email)
+    INTO v_email, v_name
+  FROM auth.users WHERE id::text = v_uid;
+
+  IF v_email IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  UPDATE public.users SET id = v_uid
+  WHERE email = v_email
+  RETURNING * INTO v_row;
+  IF FOUND THEN
+    RETURN v_row;
+  END IF;
+
+  IF v_email = 'admin@bosomtwi.com' AND NOT EXISTS (SELECT 1 FROM public.users WHERE role = 'admin') THEN
+    INSERT INTO public.users (id, email, name, role)
+    VALUES (v_uid, v_email, v_name, 'admin')
+    RETURNING * INTO v_row;
+    RETURN v_row;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.claim_user_profile() TO authenticated;
+
 -- ── Articles table ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.articles (
   id           TEXT PRIMARY KEY,
@@ -303,10 +352,16 @@ BEGIN
   END IF;
 END $$;
 
--- File-size/type limits belong on the bucket itself (10MB cap, images only)
+-- File-size/type limits belong on the bucket itself. This bucket holds
+-- both cover/body images and body videos (PublishModal.tsx uploads both
+-- here), so the limits need to cover the wider of the two client-side
+-- caps (50MB for video).
 UPDATE storage.buckets
-SET file_size_limit = 10485760,
-    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+SET file_size_limit = 52428800,
+    allowed_mime_types = ARRAY[
+      'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+      'video/mp4', 'video/webm', 'video/quicktime'
+    ]
 WHERE id = 'article-images';
 
 DO $$
