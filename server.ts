@@ -414,7 +414,10 @@ async function deleteUser(id: string) {
 // ─────────────────────────────────────────────────────────────────
 // MIDDLEWARE
 // ─────────────────────────────────────────────────────────────────
-app.use(cors());
+// Not deployed as a Vercel function today (see vercel.json — pure static
+// build); kept for local dev (`npm run dev`) and possible future revival.
+// Scoped to APP_URL instead of reflecting every origin.
+app.use(cors({ origin: process.env.APP_URL || 'http://localhost:3000' }));
 app.use(express.json({ limit: '5mb' }));
 
 function authenticateToken(req: any, res: any, next: any) {
