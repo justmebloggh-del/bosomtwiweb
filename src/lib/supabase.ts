@@ -31,6 +31,7 @@ export function dbToArticle(r: any): Article {
     category: r.category,
     author: r.author,
     publishedAt: r.published_at,
+    updatedAt: r.updated_at || null,
     excerpt: r.excerpt || '',
     content: r.content || '',
     image: r.image || '',

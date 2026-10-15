@@ -219,37 +219,88 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
 
   const readingTime = Math.max(1, Math.ceil((article.content?.split(' ').length ?? 0) / 200));
 
-  // ── Dynamic title + JSON-LD ──────────────────────────────────
+  // ── Dynamic title + meta tags + JSON-LD ──────────────────────
+  // Keeps client-side navigation consistent with the server-side meta
+  // injected by middleware.ts on first load (see MAINTENANCE_PLAN.md
+  // Task 1) — link-preview bots read the server HTML directly and never
+  // run this effect, but real browser tabs and Googlebot's JS render
+  // pass both see the same values either way.
   useEffect(() => {
-    const prev = document.title;
+    const SITE_URL = 'https://www.bosomtwiweb.com';
+    const canonicalUrl = `${SITE_URL}/article/${article.slug}`;
+    const description = article.excerpt || '';
+    const image = article.image || `${SITE_URL}/og-image.jpg`;
+    const modified = article.updatedAt || article.publishedAt;
+
+    const prevTitle = document.title;
     document.title = `${article.title} | Bosomtwi Web`;
 
-    const ld = {
+    const prevValues = new Map<string, string | null>();
+    function setMeta(selector: string, attr: string, value: string) {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      prevValues.set(selector, el.getAttribute(attr));
+      el.setAttribute(attr, value);
+    }
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('link[rel="canonical"]', 'href', canonicalUrl);
+    setMeta('meta[property="og:title"]', 'content', document.title);
+    setMeta('meta[property="og:description"]', 'content', description);
+    setMeta('meta[property="og:type"]', 'content', 'article');
+    setMeta('meta[property="og:url"]', 'content', canonicalUrl);
+    setMeta('meta[property="og:image"]', 'content', image);
+    setMeta('meta[name="twitter:title"]', 'content', document.title);
+    setMeta('meta[name="twitter:description"]', 'content', description);
+    setMeta('meta[name="twitter:image"]', 'content', image);
+
+    const headline = article.title.length > 110 ? article.title.slice(0, 109) + '…' : article.title;
+    const newsArticleLd = {
       '@context': 'https://schema.org',
       '@type': 'NewsArticle',
-      headline: article.title,
-      description: article.excerpt,
+      headline,
+      description,
       image: article.image ? [article.image] : [],
       datePublished: article.publishedAt,
-      dateModified: article.publishedAt,
+      dateModified: modified,
       author: [{ '@type': 'Person', name: article.author }],
       publisher: {
         '@type': 'NewsMediaOrganization',
         name: 'Bosomtwi Web',
-        logo: { '@type': 'ImageObject', url: 'https://www.bosomtwiweb.com/logo.png' },
+        logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
       },
-      mainEntityOfPage: { '@type': 'WebPage', '@id': window.location.href },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
       articleSection: article.category,
     };
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.id = 'article-ld';
-    script.textContent = JSON.stringify(ld);
-    document.head.appendChild(script);
+    const breadcrumbLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: article.category, item: `${SITE_URL}/category/${encodeURIComponent(article.category)}` },
+        { '@type': 'ListItem', position: 3, name: headline, item: canonicalUrl },
+      ],
+    };
+    const ldScript = document.createElement('script');
+    ldScript.type = 'application/ld+json';
+    ldScript.id = 'article-ld';
+    ldScript.textContent = JSON.stringify(newsArticleLd);
+    document.head.appendChild(ldScript);
+
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.id = 'article-breadcrumb-ld';
+    breadcrumbScript.textContent = JSON.stringify(breadcrumbLd);
+    document.head.appendChild(breadcrumbScript);
 
     return () => {
-      document.title = prev;
+      document.title = prevTitle;
+      for (const [selector, prevValue] of prevValues) {
+        const el = document.querySelector(selector);
+        const attr = selector.startsWith('link') ? 'href' : 'content';
+        if (el && prevValue !== null) el.setAttribute(attr, prevValue);
+      }
       document.getElementById('article-ld')?.remove();
+      document.getElementById('article-breadcrumb-ld')?.remove();
     };
   }, [article]);
 

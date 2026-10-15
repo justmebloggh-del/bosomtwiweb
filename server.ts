@@ -7,6 +7,14 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  articleHead,
+  categoryHead,
+  fetchArticleBySlug,
+  injectHead,
+  notFoundHead,
+  staticPageHead,
+} from './src/lib/seo';
 
 dotenv.config();
 
@@ -73,6 +81,7 @@ function dbToArticle(row: any) {
     category:    row.category,
     author:      row.author,
     publishedAt: row.published_at,
+    updatedAt:   row.updated_at || null,
     excerpt:     row.excerpt  || '',
     content:     row.content  || '',
     image:       row.image    || '',
@@ -547,7 +556,8 @@ app.post('/api/submit-story', async (req, res) => {
   }
 });
 
-// — Sitemap
+// — Sitemap (dev mirror of scripts/generate-sitemap.mjs — see that file for
+// the version that actually ships in the production static build)
 app.get('/sitemap.xml', async (req, res) => {
   const BASE = 'https://www.bosomtwiweb.com';
   const STATIC = ['', '/trending', '/videos', '/live', '/archives', '/advertise', '/community', '/contact', '/submit', '/privacy', '/terms'];
@@ -558,13 +568,12 @@ app.get('/sitemap.xml', async (req, res) => {
   const urls = [
     ...STATIC.map(path => ({
       loc: `${BASE}${path}`,
-      lastmod: new Date().toISOString().split('T')[0],
       changefreq: path === '' ? 'hourly' : 'weekly',
       priority: path === '' ? '1.0' : '0.7',
     })),
     ...articles.map((a: any) => ({
       loc: `${BASE}/article/${a.slug || a.id}`,
-      lastmod: (a.publishedAt || '').split('T')[0] || new Date().toISOString().split('T')[0],
+      lastmod: (a.updatedAt || a.publishedAt || '').split('T')[0] || undefined,
       changefreq: 'weekly',
       priority: '0.8',
     })),
@@ -572,10 +581,9 @@ app.get('/sitemap.xml', async (req, res) => {
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(u => `  <url>
+${urls.map((u: any) => `  <url>
     <loc>${u.loc}</loc>
-    <lastmod>${u.lastmod}</lastmod>
-    <changefreq>${u.changefreq}</changefreq>
+${u.lastmod ? `    <lastmod>${u.lastmod}</lastmod>\n` : ''}    <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`).join('\n')}
 </urlset>`;
@@ -584,7 +592,7 @@ ${urls.map(u => `  <url>
   res.send(xml);
 });
 
-// — robots.txt
+// — robots.txt (dev mirror of public/robots.txt)
 app.get('/robots.txt', (_, res) => {
   res.setHeader('Content-Type', 'text/plain');
   res.send(`User-agent: *
@@ -593,8 +601,53 @@ Disallow: /admin
 Disallow: /api/
 
 Sitemap: https://www.bosomtwiweb.com/sitemap.xml
+Sitemap: https://www.bosomtwiweb.com/news-sitemap.xml
 `);
 });
+
+// — /feed and /rss.xml → /feed.xml (dev mirror of the vercel.json redirects)
+app.get('/feed', (_, res) => res.redirect(308, '/feed.xml'));
+app.get('/rss.xml', (_, res) => res.redirect(308, '/feed.xml'));
+
+// ─────────────────────────────────────────────────────────────────
+// SEO: per-route metadata for crawlers + social previews
+// Local-dev mirror of middleware.ts (the Vercel Edge Middleware that
+// does this in production — see MAINTENANCE_PLAN.md Task 1). Registered
+// from init() once we know whether we're serving via Vite (dev) or the
+// static dist/ build (prod), so unknown slugs can 404 and real ones get
+// NewsArticle + BreadcrumbList JSON-LD the same way middleware.ts does.
+// ─────────────────────────────────────────────────────────────────
+const SEO_STATIC_PATHS = ['/privacy', '/terms', '/advertise', '/trending', '/videos', '/live', '/archives', '/community', '/contact', '/submit'];
+
+function registerSeoRoutes(getRawHtml: () => string, finalizeHtml?: (url: string, html: string) => Promise<string>) {
+  const finalize = (url: string, html: string) => (finalizeHtml ? finalizeHtml(url, html) : Promise.resolve(html));
+
+  app.get('/article/:slug', async (req, res) => {
+    const slug = decodeURIComponent(req.params.slug);
+    const article = await fetchArticleBySlug(slug);
+    const injected = article ? injectHead(getRawHtml(), articleHead(article)) : injectHead(getRawHtml(), notFoundHead());
+    const html = await finalize(req.originalUrl, injected);
+    if (!article) res.status(404);
+    else res.set('Cache-Control', 's-maxage=300, stale-while-revalidate=86400');
+    res.set('Content-Type', 'text/html; charset=utf-8').send(html);
+  });
+
+  app.get('/category/:name', async (req, res) => {
+    const category = decodeURIComponent(req.params.name);
+    const injected = injectHead(getRawHtml(), categoryHead(category));
+    const html = await finalize(req.originalUrl, injected);
+    res.set('Content-Type', 'text/html; charset=utf-8').send(html);
+  });
+
+  for (const p of SEO_STATIC_PATHS) {
+    app.get(p, async (req, res) => {
+      const meta = staticPageHead(p);
+      const injected = meta ? injectHead(getRawHtml(), meta) : getRawHtml();
+      const html = await finalize(req.originalUrl, injected);
+      res.set('Content-Type', 'text/html; charset=utf-8').send(html);
+    });
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────
 // EXPORT (Vercel serverless) + LOCAL SERVER
@@ -608,9 +661,14 @@ async function init() {
       server: { middlewareMode: true, hmr: { port: 24679 } },
       appType: 'spa',
     });
+    registerSeoRoutes(
+      () => fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8'),
+      (url, html) => vite.transformIndexHtml(url, html),
+    );
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    registerSeoRoutes(() => fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8'));
     app.use(express.static(distPath));
     app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
   }

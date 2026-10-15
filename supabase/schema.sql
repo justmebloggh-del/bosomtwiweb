@@ -81,6 +81,27 @@ CREATE TABLE IF NOT EXISTS public.articles (
   status       TEXT DEFAULT 'published'
 );
 
+-- updated_at: added for Task 1/3 of MAINTENANCE_PLAN.md (NewsArticle
+-- dateModified + accurate sitemap <lastmod>). ADD COLUMN IF NOT EXISTS
+-- is safe to re-run against the existing production table, which
+-- predates this column — existing rows get NULL, which the sitemap and
+-- middleware.ts already fall back to published_at for.
+ALTER TABLE public.articles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+
+CREATE OR REPLACE FUNCTION public.set_articles_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS articles_set_updated_at ON public.articles;
+CREATE TRIGGER articles_set_updated_at
+  BEFORE UPDATE ON public.articles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_articles_updated_at();
+
 -- ── Row Level Security ───────────────────────────────────────────
 ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
 

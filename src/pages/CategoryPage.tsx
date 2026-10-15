@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { ArrowRight, PenSquare } from 'lucide-react';
 import ArticleCard from '../components/ArticleCard';
@@ -6,6 +6,7 @@ import AdBanner from '../components/AdBanner';
 import KenteBanner from '../components/KenteBanner';
 import PublishModal from '../components/PublishModal';
 import { Article, User } from '../types';
+import { CATEGORY_DESCRIPTIONS } from '../lib/categoryMeta';
 
 interface CategoryPageProps {
   category: string;
@@ -17,16 +18,7 @@ interface CategoryPageProps {
   onArticlePublished?: () => void;
 }
 
-const DESCRIPTIONS: Record<string, string> = {
-  Manhyia:       'Royal palace, traditional leadership, and Ashanti heritage.',
-  Politics:      'Government, elections, policy, and national governance.',
-  Business:      'Markets, enterprise, and economic insight from Ashanti Region.',
-  Sports:        'Football, athletics, and all major sporting events.',
-  Entertainment: 'Music, film, arts, celebrity, and cultural highlights.',
-  Technology:    'Innovation, digital transformation, and science in Africa.',
-  Lifestyle:     'Health, wellness, travel, food, and everyday living.',
-  International: 'World news, global affairs, and Africa on the world stage.',
-};
+const DESCRIPTIONS = CATEGORY_DESCRIPTIONS;
 
 export default function CategoryPage({
   category,
@@ -44,6 +36,38 @@ export default function CategoryPage({
   const secondary = filtered.slice(1, 4);
   const rest = filtered.slice(4);
   const description = DESCRIPTIONS[category] || 'Latest news updates from our newsroom.';
+
+  // Keeps client-side nav consistent with the server-side meta middleware.ts
+  // injects on first load for /category/:name (see MAINTENANCE_PLAN.md Task 1).
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = `${category} | Bosomtwi Web`;
+    const canonicalUrl = `https://www.bosomtwiweb.com/category/${encodeURIComponent(category)}`;
+
+    const prevValues = new Map<string, string | null>();
+    function setMeta(selector: string, attr: string, value: string) {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      prevValues.set(selector, el.getAttribute(attr));
+      el.setAttribute(attr, value);
+    }
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('link[rel="canonical"]', 'href', canonicalUrl);
+    setMeta('meta[property="og:title"]', 'content', document.title);
+    setMeta('meta[property="og:description"]', 'content', description);
+    setMeta('meta[property="og:url"]', 'content', canonicalUrl);
+    setMeta('meta[name="twitter:title"]', 'content', document.title);
+    setMeta('meta[name="twitter:description"]', 'content', description);
+
+    return () => {
+      document.title = prevTitle;
+      for (const [selector, prevValue] of prevValues) {
+        const el = document.querySelector(selector);
+        const attr = selector.startsWith('link') ? 'href' : 'content';
+        if (el && prevValue !== null) el.setAttribute(attr, prevValue);
+      }
+    };
+  }, [category, description]);
 
   if (loading) {
     return (
