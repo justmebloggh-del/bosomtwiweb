@@ -1,14 +1,14 @@
 import { ReactNode } from 'react';
 import { motion } from 'motion/react';
 
-// Authentic kente colour sequences — gold, black, forest green, crimson
+// Kente strips using brand palette — Ashanti Gold, Deep Green, White, Crimson accent
 const KENTE_STRIPS = [
-  ['#C9A227','#0A0600','#C9A227','#145214','#C9A227','#6B0000','#C9A227','#0A0600','#145214','#C9A227','#6B0000','#0A0600'],
-  ['#0A0600','#C9A227','#6B0000','#C9A227','#145214','#0A0600','#C9A227','#6B0000','#C9A227','#145214','#C9A227','#6B0000'],
-  ['#145214','#0A0600','#C9A227','#6B0000','#C9A227','#0A0600','#145214','#C9A227','#6B0000','#0A0600','#C9A227','#145214'],
-  ['#6B0000','#C9A227','#0A0600','#C9A227','#145214','#C9A227','#6B0000','#0A0600','#C9A227','#6B0000','#145214','#C9A227'],
-  ['#C9A227','#145214','#6B0000','#0A0600','#C9A227','#6B0000','#0A0600','#C9A227','#145214','#6B0000','#C9A227','#0A0600'],
-  ['#0A0600','#6B0000','#C9A227','#145214','#0A0600','#C9A227','#6B0000','#145214','#C9A227','#0A0600','#6B0000','#C9A227'],
+  ['#E09E2B','#FFFFFF','#E09E2B','#0D3B1A','#E09E2B','#7A1C1C','#E09E2B','#FFFFFF','#0D3B1A','#E09E2B','#7A1C1C','#0D3B1A'],
+  ['#0D3B1A','#E09E2B','#7A1C1C','#E09E2B','#FFFFFF','#0D3B1A','#E09E2B','#7A1C1C','#E09E2B','#FFFFFF','#E09E2B','#7A1C1C'],
+  ['#FFFFFF','#0D3B1A','#E09E2B','#7A1C1C','#E09E2B','#0D3B1A','#FFFFFF','#E09E2B','#7A1C1C','#0D3B1A','#E09E2B','#FFFFFF'],
+  ['#7A1C1C','#E09E2B','#0D3B1A','#E09E2B','#FFFFFF','#E09E2B','#7A1C1C','#0D3B1A','#E09E2B','#7A1C1C','#FFFFFF','#E09E2B'],
+  ['#E09E2B','#FFFFFF','#7A1C1C','#0D3B1A','#E09E2B','#7A1C1C','#0D3B1A','#E09E2B','#FFFFFF','#7A1C1C','#E09E2B','#0D3B1A'],
+  ['#0D3B1A','#7A1C1C','#E09E2B','#FFFFFF','#0D3B1A','#E09E2B','#7A1C1C','#FFFFFF','#E09E2B','#0D3B1A','#7A1C1C','#E09E2B'],
 ];
 const SEG = 34;
 
@@ -24,8 +24,8 @@ interface KenteBannerProps {
 export default function KenteBanner({ title, badge, description, count, above, actions }: KenteBannerProps) {
   return (
     <header
-      className="relative overflow-hidden py-8 md:py-12 border-b border-black/40"
-      style={{ background: 'linear-gradient(135deg, #08040A 0%, #100800 45%, #050302 100%)' }}
+      className="relative overflow-hidden py-8 md:py-12 border-b border-black/30"
+      style={{ background: 'linear-gradient(135deg, #0D3B1A 0%, #0A2E14 50%, #062010 100%)' }}
     >
       {/* ── Kente animated strips ───────────────────────── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -37,7 +37,7 @@ export default function KenteBanner({ title, badge, description, count, above, a
             <motion.div
               key={i}
               className="absolute left-0 flex"
-              style={{ top: `${pct}%`, height: `${100 / KENTE_STRIPS.length}%`, opacity: 0.18 }}
+              style={{ top: `${pct}%`, height: `${100 / KENTE_STRIPS.length}%`, opacity: 0.28 }}
               animate={{ x: [0, dir * segTotal, 0] }}
               transition={{ duration: 22 + i * 4, repeat: Infinity, ease: 'linear' }}
             >
@@ -52,15 +52,14 @@ export default function KenteBanner({ title, badge, description, count, above, a
           );
         })}
 
-        {/* Diagonal crosshatch overlay */}
+        {/* Kente diamond crosshatch overlay */}
         <div
-          className="absolute inset-0 opacity-[0.06]"
+          className="absolute inset-0 opacity-[0.12]"
           style={{
-            backgroundImage: `repeating-linear-gradient(
-              45deg,
-              #C9A227 0px, #C9A227 1px,
-              transparent 1px, transparent 14px
-            )`,
+            backgroundImage: `
+              repeating-linear-gradient(45deg,  #E09E2B 0px, #E09E2B 1px, transparent 1px, transparent 14px),
+              repeating-linear-gradient(-45deg, #FFFFFF 0px, #FFFFFF 1px, transparent 1px, transparent 14px)
+            `,
           }}
         />
       </div>

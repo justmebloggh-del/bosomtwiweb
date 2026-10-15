@@ -1,6 +1,70 @@
 -- Run this once in your Supabase SQL Editor
 -- Dashboard → SQL Editor → New query → paste & run
 
+-- ── Role-check helpers (used by policies below; bodies aren't
+--    validated until first call, so it's fine that public.users
+--    doesn't exist yet at this point in the script). Cast both sides
+--    to text: some deployments of this schema have users.id as text
+--    rather than uuid, and a bare comparison errors in that case.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role = 'admin');
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id::text = auth.uid()::text AND role IN ('journalist', 'admin'));
+$$;
+
+-- Reconciles an admin-invited user's placeholder id (set by
+-- AdminDashboard's "Add Author", before that person has ever signed
+-- in) to their real auth.uid() on login — see
+-- fix_user_id_reconciliation.sql for why this has to run as
+-- SECURITY DEFINER rather than a plain client-side update.
+CREATE OR REPLACE FUNCTION public.claim_user_profile()
+RETURNS public.users
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_uid   text := auth.uid()::text;
+  v_email text;
+  v_name  text;
+  v_row   public.users;
+BEGIN
+  SELECT * INTO v_row FROM public.users WHERE id::text = v_uid;
+  IF FOUND THEN
+    RETURN v_row;
+  END IF;
+
+  SELECT email, COALESCE(raw_user_meta_data->>'full_name', email)
+    INTO v_email, v_name
+  FROM auth.users WHERE id::text = v_uid;
+
+  IF v_email IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  UPDATE public.users SET id = v_uid
+  WHERE email = v_email
+  RETURNING * INTO v_row;
+  IF FOUND THEN
+    RETURN v_row;
+  END IF;
+
+  IF v_email = 'admin@bosomtwi.com' AND NOT EXISTS (SELECT 1 FROM public.users WHERE role = 'admin') THEN
+    INSERT INTO public.users (id, email, name, role)
+    VALUES (v_uid, v_email, v_name, 'admin')
+    RETURNING * INTO v_row;
+    RETURN v_row;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.claim_user_profile() TO authenticated;
+
 -- ── Articles table ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.articles (
   id           TEXT PRIMARY KEY,
@@ -13,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.articles (
   content      TEXT DEFAULT '',
   image        TEXT DEFAULT '',
   video_url    TEXT DEFAULT '',
+  views        INTEGER DEFAULT 0,
   status       TEXT DEFAULT 'published'
 );
 
@@ -25,21 +90,25 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- NOTE: article mutation policies require an actual journalist/admin
+-- role (see public.is_staff() above) — "authenticated" alone is not
+-- enough. See rls_hardening.sql for the history of why (self-registration
+-- must never grant publish access).
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can insert articles') THEN
-    CREATE POLICY "Authenticated users can insert articles" ON public.articles FOR INSERT TO authenticated WITH CHECK (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Journalists and admins can insert articles') THEN
+    CREATE POLICY "Journalists and admins can insert articles" ON public.articles FOR INSERT TO authenticated WITH CHECK (public.is_staff());
   END IF;
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can update articles') THEN
-    CREATE POLICY "Authenticated users can update articles" ON public.articles FOR UPDATE TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Journalists and admins can update articles') THEN
+    CREATE POLICY "Journalists and admins can update articles" ON public.articles FOR UPDATE TO authenticated USING (public.is_staff());
   END IF;
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Authenticated users can delete articles') THEN
-    CREATE POLICY "Authenticated users can delete articles" ON public.articles FOR DELETE TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='articles' AND policyname='Journalists and admins can delete articles') THEN
+    CREATE POLICY "Journalists and admins can delete articles" ON public.articles FOR DELETE TO authenticated USING (public.is_staff());
   END IF;
 END $$;
 
@@ -142,25 +211,158 @@ VALUES
    'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80&w=800', 'published')
 ON CONFLICT (id) DO NOTHING;
 
+-- ── Users table ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.users (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text UNIQUE NOT NULL,
+  name text,
+  role text NOT NULL DEFAULT 'journalist',
+  created_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS for users table
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Only admins can create new user rows (self-registration must never
+-- grant access — see rls_hardening.sql for why).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Admins can insert users') THEN
+    CREATE POLICY "Admins can insert users" ON public.users FOR INSERT TO authenticated WITH CHECK (public.is_admin());
+  END IF;
+END $$;
+
+-- Allow authenticated users to select all users
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Authenticated users can select users') THEN
+    CREATE POLICY "Authenticated users can select users" ON public.users FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
+
+-- Users may update their own name, but not their own role.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can update own profile except role') THEN
+    CREATE POLICY "Users can update own profile except role" ON public.users FOR UPDATE TO authenticated
+      USING (id::text = auth.uid()::text)
+      WITH CHECK (id::text = auth.uid()::text AND role = (SELECT u.role FROM public.users u WHERE u.id::text = auth.uid()::text));
+  END IF;
+END $$;
+
+-- Admins can update any user, including role changes.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Admins can update any user') THEN
+    CREATE POLICY "Admins can update any user" ON public.users FOR UPDATE TO authenticated
+      USING (public.is_admin()) WITH CHECK (public.is_admin());
+  END IF;
+END $$;
+
+-- ── Site visits (one row per day) ────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.site_visits (
+  visit_date  date   PRIMARY KEY DEFAULT CURRENT_DATE,
+  visit_count bigint NOT NULL DEFAULT 0
+);
+
+-- Rename legacy column if the table was created with the reserved word "count"
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'site_visits' AND column_name = 'count'
+  ) THEN
+    ALTER TABLE public.site_visits RENAME COLUMN count TO visit_count;
+  END IF;
+END $$;
+
+-- Add visit_count if the table existed but had neither column
+ALTER TABLE public.site_visits ADD COLUMN IF NOT EXISTS visit_count bigint NOT NULL DEFAULT 0;
+
+ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='site_visits' AND policyname='Public can read site visits') THEN
+    CREATE POLICY "Public can read site visits" ON public.site_visits FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- Atomically increment today's visit count (upsert so the first hit of the day creates the row)
+CREATE OR REPLACE FUNCTION public.increment_site_visits()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  INSERT INTO public.site_visits (visit_date, visit_count)
+  VALUES (CURRENT_DATE, 1)
+  ON CONFLICT (visit_date)
+  DO UPDATE SET visit_count = site_visits.visit_count + 1;
+$$;
+
+-- Atomically increment an article's view count
+CREATE OR REPLACE FUNCTION public.increment_article_views(p_article_id text)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  UPDATE public.articles SET views = COALESCE(views, 0) + 1 WHERE id = p_article_id;
+$$;
+
+-- ── Comments table ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.comments (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  article_id  text NOT NULL REFERENCES public.articles(id) ON DELETE CASCADE,
+  author_name text NOT NULL DEFAULT 'Anonymous',
+  body        text NOT NULL,
+  created_at  timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='comments' AND policyname='Public can read comments') THEN
+    CREATE POLICY "Public can read comments" ON public.comments FOR SELECT USING (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='comments' AND policyname='Public can post comments') THEN
+    CREATE POLICY "Public can post comments" ON public.comments FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
+
+-- ── Ensure anonymous visitors can call tracking functions ───────
+-- SECURITY DEFINER lets these run as the owner (bypassing RLS),
+-- but the anon role still needs EXECUTE permission to invoke them.
+GRANT EXECUTE ON FUNCTION public.increment_site_visits() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_article_views(text) TO anon, authenticated;
+
 -- ── Supabase Storage — article image uploads ─────────────────────
 -- Run these in the Supabase SQL Editor AFTER creating the bucket
 -- via Dashboard → Storage → New bucket (name: article-images, Public: ON)
 
--- Allow authenticated users to upload images
+-- Only journalists/admins can upload images
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'storage' AND tablename = 'objects'
-      AND policyname = 'Auth users can upload article images'
+      AND policyname = 'Staff can upload article images'
   ) THEN
     EXECUTE $policy$
-      CREATE POLICY "Auth users can upload article images"
+      CREATE POLICY "Staff can upload article images"
         ON storage.objects FOR INSERT TO authenticated
-        WITH CHECK (bucket_id = 'article-images');
+        WITH CHECK (bucket_id = 'article-images' AND public.is_staff());
     $policy$;
   END IF;
 END $$;
+
+-- File-size/type limits belong on the bucket itself. This bucket holds
+-- both cover/body images and body videos (PublishModal.tsx uploads both
+-- here), so the limits need to cover the wider of the two client-side
+-- caps (50MB for video).
+UPDATE storage.buckets
+SET file_size_limit = 52428800,
+    allowed_mime_types = ARRAY[
+      'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+      'video/mp4', 'video/webm', 'video/quicktime'
+    ]
+WHERE id = 'article-images';
 
 DO $$
 BEGIN

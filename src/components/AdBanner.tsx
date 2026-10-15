@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 type AdSize = 'leaderboard' | 'rectangle' | 'square' | 'wide';
 
@@ -73,32 +75,85 @@ const ADS = [
   },
 ];
 
-function getAdIndex(seed: number) {
-  return seed % ADS.length;
+function getAdIndex(seed: number, pool: number) {
+  return seed % pool;
+}
+
+// Module-level cache so all AdBanner instances share one fetch. Several
+// AdBanner instances typically mount at the same time (leaderboard +
+// sidebar + in-feed ads on one page); without the in-flight promise below,
+// each one fired its own identical `live_ads` request before any of them
+// had populated the cache — 4 duplicate ~95KB fetches on a single article
+// page load.
+let _liveAds: any[] | null = null;
+let _fetchedAt = 0;
+let _fetchPromise: Promise<any[]> | null = null;
+
+function fetchLiveAds(): Promise<any[]> {
+  if (_liveAds && Date.now() - _fetchedAt < 300_000) return Promise.resolve(_liveAds);
+  if (_fetchPromise) return _fetchPromise;
+  _fetchPromise = Promise.resolve(supabase.from('live_ads').select('*').eq('active', true)).then(({ data }) => {
+    _liveAds = data || [];
+    _fetchedAt = Date.now();
+    _fetchPromise = null;
+    return _liveAds;
+  });
+  return _fetchPromise;
+}
+
+function mapLiveAd(a: any) {
+  return {
+    brand:   a.brand,
+    tagline: a.tagline || '',
+    cta:     a.cta_text || 'Learn More',
+    ctaUrl:  a.cta_url || '#',
+    bg:      'from-amber-50 to-yellow-50',
+    accent:  a.accent_color || '#E09E2B',
+    label:   a.package_tier || 'Sponsored',
+    logo:    a.logo || '📢',
+  };
+}
+
+function AdLogo({ logo, size = 'md' }: { logo: string; size?: 'sm' | 'md' | 'lg' }) {
+  const sizeMap = { sm: 'w-8 h-8 text-2xl', md: 'w-10 h-10 text-3xl', lg: 'w-12 h-12 text-4xl' };
+  if (logo.startsWith('http') || logo.startsWith('data:')) {
+    return <img src={logo} alt="Ad logo" className={`${sizeMap[size]} rounded-lg object-contain border border-gray-100 bg-white`} />;
+  }
+  return <span className={sizeMap[size].split(' ').slice(2).join(' ')}>{logo}</span>;
 }
 
 export default function AdBanner({ size = 'rectangle', className = '', customAd }: AdBannerProps) {
-  // Use time-based rotation so different slots show different ads
+  const [liveAds, setLiveAds] = useState<typeof ADS>(_liveAds ? _liveAds.map(mapLiveAd) : []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLiveAds().then(ads => {
+      if (!cancelled) setLiveAds(ads.map(mapLiveAd));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const slot = Math.floor(Date.now() / 60000) + (size === 'leaderboard' ? 0 : size === 'wide' ? 2 : size === 'square' ? 4 : 1);
-  const ad = customAd || ADS[getAdIndex(slot)];
+  const pool = liveAds.length > 0 ? liveAds : ADS;
+  const ad = customAd || pool[getAdIndex(slot, pool.length)];
 
   if (size === 'leaderboard') {
     return (
-      <div className={`w-full bg-gradient-to-r ${ad.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-lg transition-all ${className}`}>
+      <div className={`w-full bg-gradient-to-r ${ad.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-lg transition-all ${className}`}>
         <div className="flex items-center justify-between px-8 py-5">
           <div className="flex items-center space-x-6">
-            <span className="text-4xl">{ad.logo}</span>
+            <AdLogo logo={ad.logo} size="lg" />
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-0.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-0.5">
                 Sponsored • {ad.label}
               </p>
-              <h4 className="font-heading text-xl font-black text-gray-800 leading-tight">{ad.brand}</h4>
-              <p className="text-sm text-gray-500 font-medium italic">{ad.tagline}</p>
+              <h4 className="font-heading text-xl font-black text-gray-800 dark:text-news-text leading-tight">{ad.brand}</h4>
+              <p className="text-sm text-gray-500 dark:text-news-muted font-medium italic">{ad.tagline}</p>
             </div>
           </div>
           <a
-            href="#"
-            onClick={e => e.preventDefault()}
+            href={(ad as any).ctaUrl || '#'}
+            target="_blank" rel="noopener noreferrer"
             className="flex items-center space-x-2 px-6 py-3 rounded-lg font-black text-[11px] uppercase tracking-widest text-white transition-all hover:opacity-80 whitespace-nowrap"
             style={{ backgroundColor: ad.accent }}
           >
@@ -113,18 +168,18 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
 
   if (size === 'wide') {
     return (
-      <div className={`w-full bg-gradient-to-r ${ad.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
+      <div className={`w-full bg-gradient-to-r ${ad.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <span className="text-2xl">{ad.logo}</span>
+            <AdLogo logo={ad.logo} size="sm" />
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Sponsored</p>
-              <h4 className="font-bold text-gray-800 text-sm leading-tight">{ad.brand} — <span className="font-normal text-gray-500 italic">{ad.tagline}</span></h4>
+              <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted">Sponsored</p>
+              <h4 className="font-bold text-gray-800 dark:text-news-text text-sm leading-tight">{ad.brand} — <span className="font-normal text-gray-500 dark:text-news-muted italic">{ad.tagline}</span></h4>
             </div>
           </div>
           <a
-            href="#"
-            onClick={e => e.preventDefault()}
+            href={(ad as any).ctaUrl || '#'}
+            target="_blank" rel="noopener noreferrer"
             className="px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest text-white hover:opacity-80 transition-all whitespace-nowrap"
             style={{ backgroundColor: ad.accent }}
           >
@@ -136,13 +191,13 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
   }
 
   if (size === 'square') {
-    const ad2 = ADS[getAdIndex(slot + 1)];
+    const ad2 = pool[getAdIndex(slot + 1, pool.length)];
     return (
-      <div className={`bg-gradient-to-br ${ad2.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all aspect-square flex flex-col items-center justify-center p-6 text-center ${className}`}>
-        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-3">Sponsored</p>
-        <span className="text-5xl mb-3">{ad2.logo}</span>
-        <h4 className="font-heading font-black text-gray-800 text-lg leading-tight mb-1">{ad2.brand}</h4>
-        <p className="text-gray-500 text-xs italic mb-4">{ad2.tagline}</p>
+      <div className={`bg-gradient-to-br ${ad2.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all aspect-square flex flex-col items-center justify-center p-6 text-center ${className}`}>
+        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-3">Sponsored</p>
+        <div className="mb-3"><AdLogo logo={ad2.logo} size="lg" /></div>
+        <h4 className="font-heading font-black text-gray-800 dark:text-news-text text-lg leading-tight mb-1">{ad2.brand}</h4>
+        <p className="text-gray-500 dark:text-news-muted text-xs italic mb-4">{ad2.tagline}</p>
         <a
           href="#"
           onClick={e => e.preventDefault()}
@@ -157,14 +212,14 @@ export default function AdBanner({ size = 'rectangle', className = '', customAd 
 
   // Default: rectangle
   return (
-    <div className={`w-full bg-gradient-to-br ${ad.bg} border border-gray-200 rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
+    <div className={`w-full bg-gradient-to-br ${ad.bg} dark:bg-none dark:bg-news-card border border-gray-200 dark:border-news-border rounded-xl overflow-hidden relative group cursor-pointer hover:shadow-md transition-all ${className}`}>
       <div className="p-6">
-        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-3">Advertisement</p>
+        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 dark:text-news-muted mb-3">Advertisement</p>
         <div className="flex items-start space-x-4 mb-4">
-          <span className="text-3xl">{ad.logo}</span>
+          <AdLogo logo={ad.logo} size="md" />
           <div>
-            <h4 className="font-heading font-black text-gray-800 text-lg leading-tight">{ad.brand}</h4>
-            <p className="text-gray-500 text-sm italic">{ad.tagline}</p>
+            <h4 className="font-heading font-black text-gray-800 dark:text-news-text text-lg leading-tight">{ad.brand}</h4>
+            <p className="text-gray-500 dark:text-news-muted text-sm italic">{ad.tagline}</p>
           </div>
         </div>
         <a

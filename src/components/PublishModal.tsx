@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine, Bold, Italic, Image, Play } from 'lucide-react';
 import { motion } from 'motion/react';
 import { User, Article } from '../types';
 import { supabase } from '../lib/supabase';
 
 const ALL_CATEGORIES = [
-  'Manhyia', 'Politics', 'Business', 'Sports', 'Entertainment',
-  'Technology', 'Lifestyle', 'International',
+  'Manhyia', 'News', 'Politics', 'Business', 'Education',
+  'Sports', 'Entertainment', 'Lifestyle', 'Technology',
+  'International', 'Health', 'Local', 'Editorials', 'Editorials & Opinion',
 ];
+
 
 interface PublishModalProps {
   user: User;
@@ -37,6 +39,8 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
   const [uploadError, setUploadError] = useState('');
   const [status, setStatus]         = useState({ text: '', type: '' });
   const [saving, setSaving]         = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
 
@@ -77,7 +81,7 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
         category:     form.category,
         author:       form.author,
         excerpt:      form.excerpt,
-        content:      form.content,
+        content:      form.content || '',
         image:        form.image || 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800',
         video_url:    form.videoUrl || '',
         status:       'published',
@@ -105,6 +109,49 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
       setStatus({ text: err.message || 'Save failed. Check your connection.', type: 'error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Add these handlers above the return statement
+  const handleBodyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setStatus({ text: 'Image must be under 10 MB.', type: 'error' }); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `body-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('article-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from('article-images').getPublicUrl(data.path);
+      set('content', form.content + `\n[image]${publicUrl}[/image]\n`);
+    } catch (err: any) {
+      setStatus({ text: err.message || 'Upload failed — check storage bucket exists.', type: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleBodyVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { setStatus({ text: 'Video must be under 50 MB.', type: 'error' }); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'mp4';
+      const path = `body-video-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('article-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from('article-images').getPublicUrl(data.path);
+      set('content', form.content + `\n[video]${publicUrl}[/video]\n`);
+    } catch (err: any) {
+      setStatus({ text: err.message || 'Upload failed — check storage bucket exists.', type: 'error' });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -294,16 +341,173 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
             />
           </div>
 
-          {/* Full body */}
-          <div className="space-y-1.5">
+          {/* Full body - Rich Text Editor */}
+          <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-widest font-black text-slate-400">Full Article Body</label>
+            
+            {/* Text Formatting Toolbar */}
+            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  const textarea = textareaRef.current;
+                  if (textarea) {
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const selected = form.content.substring(start, end);
+                    const before = form.content.substring(0, start);
+                    const after = form.content.substring(end);
+                    set('content', before + `**${selected}**` + after);
+                  }
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                title="Bold"
+              >
+                <Bold size={14} /> Bold
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const textarea = textareaRef.current;
+                  if (textarea) {
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const selected = form.content.substring(start, end);
+                    const before = form.content.substring(0, start);
+                    const after = form.content.substring(end);
+                    set('content', before + `_${selected}_` + after);
+                  }
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                title="Italic"
+              >
+                <Italic size={14} /> Italic
+              </button>
+
+              <select
+                onChange={(e) => {
+                  if (e.target.value !== 'default') {
+                    const textarea = textareaRef.current;
+                    if (textarea) {
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const selected = form.content.substring(start, end);
+                      const before = form.content.substring(0, start);
+                      const after = form.content.substring(end);
+                      set('content', before + `[size:${e.target.value}]${selected}[/size]` + after);
+                      e.target.value = 'default';
+                    }
+                  }
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors text-xs font-bold cursor-pointer"
+              >
+                <option value="default">Text Size</option>
+                <option value="sm">Small</option>
+                <option value="base">Normal</option>
+                <option value="lg">Large</option>
+                <option value="xl">Extra Large</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const imageUrl = prompt('Enter image URL:');
+                  if (imageUrl) {
+                    set('content', form.content + `\n[image]${imageUrl}[/image]\n`);
+                  }
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                title="Insert Image"
+              >
+                <Image size={14} /> Image
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const videoUrl = prompt('Enter video URL (YouTube or other):');
+                  if (videoUrl) {
+                    set('content', form.content + `\n[video]${videoUrl}[/video]\n`);
+                  }
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                title="Insert Video"
+              >
+                <Play size={14} /> Video
+              </button>
+
+              <label className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="Upload Image">
+                <Image size={14} /> Upload Image
+                <input type="file" accept="image/*" className="hidden" onChange={handleBodyImageUpload} disabled={uploading} />
+              </label>
+              <label className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="Upload Video">
+                <Play size={14} /> Upload Video
+                <input type="file" accept="video/*" className="hidden" onChange={handleBodyVideoUpload} disabled={uploading} />
+              </label>
+            </div>
+
+            {/* Content Textarea */}
             <textarea
+              ref={textareaRef}
               rows={9}
               value={form.content}
               onChange={e => set('content', e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm leading-relaxed focus:outline-none focus:border-ashanti-gold transition-all resize-none placeholder:text-slate-300"
-              placeholder="Write the full article here. Use blank lines between paragraphs…"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm leading-relaxed focus:outline-none focus:border-ashanti-gold transition-all resize-none placeholder:text-slate-300 font-mono"
+              placeholder="Write the full article here. Use **bold** for bold, _italic_ for italics. Insert [image]URL[/image] or [video]URL[/video] to embed media…"
             />
+
+            {/* Formatting Tips */}
+            <p className="text-[10px] text-slate-500">
+              💡 Tips: Use <span className="font-mono bg-slate-100 px-1">**text**</span> for bold, <span className="font-mono bg-slate-100 px-1">_text_</span> for italic, or use the toolbar above.
+            </p>
+
+            {/* Embedded media previews */}
+            {(() => {
+              const images = [...(form.content.matchAll(/\[image\](https?:\/\/[^\]]+)\[\/image\]/g))].map(m => m[1]);
+              const videos = [...(form.content.matchAll(/\[video\](https?:\/\/[^\]]+)\[\/video\]/g))].map(m => m[1]);
+              if (images.length === 0 && videos.length === 0) return null;
+              return (
+                <div className="space-y-2 pt-1">
+                  <p className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+                    Embedded media ({images.length + videos.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((src, i) => (
+                      <div key={`pi${i}`} className="relative group">
+                        <img
+                          src={src}
+                          alt=""
+                          className="h-20 w-28 object-cover rounded-lg border border-slate-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => set('content', form.content.replace(`[image]${src}[/image]`, ''))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black hidden group-hover:flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {videos.map((src, i) => (
+                      <div key={`pv${i}`} className="relative group h-20 w-28 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden flex items-center justify-center">
+                        <video src={src} className="h-full w-full object-cover" muted />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Play size={20} className="text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => set('content', form.content.replace(`[video]${src}[/video]`, ''))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black hidden group-hover:flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Save / Publish button */}
