@@ -2,12 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "bosomtwiweb.com" }],
-      "destination": "https://www.bosomtwiweb.com/:path*",
-      "permanent": true
-    },
     { "source": "/feed", "destination": "/feed.xml", "permanent": true },
     { "source": "/rss.xml", "destination": "/feed.xml", "permanent": true }
   ],
