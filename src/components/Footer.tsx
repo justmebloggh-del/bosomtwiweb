@@ -105,6 +105,15 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               ))}
             </div>
 
+            {/* Google Preferred Sources — lets a reader mark Bosomtwi Web as
+                a preferred source so they see more of our stories in
+                Google Search/Discover/News. Script tag is in index.html;
+                this div is auto-upgraded into Google's own button. */}
+            <div className="mb-6">
+              <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest mb-2">See more of our stories on Google</p>
+              <div google-add-preferred-source-btn="" data-theme="dark"></div>
+            </div>
+
             {/* Live TV pill */}
             <button onClick={() => onNavigate?.('live')}
               className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
