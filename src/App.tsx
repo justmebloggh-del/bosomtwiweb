@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PublishModal from './components/PublishModal';
@@ -157,6 +157,17 @@ export default function App() {
 
   useEffect(() => { loadArticles(); }, []);
 
+  // Articles older than 30 days fall off the homepage and category pages
+  // into the Archives page (which still shows everything — see
+  // ArchivesPage) — a rolling window computed from `articles` on every
+  // render rather than a stored flag, so it's always correct without a
+  // migration or a cron job: an article ages out on its own 30 days
+  // after `publishedAt`, no further action needed anywhere.
+  const recentArticles = useMemo(() => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return articles.filter(a => new Date(a.publishedAt).getTime() >= cutoff);
+  }, [articles]);
+
   // Deep-link on mount: read slug from URL before articles are loaded
   useEffect(() => {
     const path = window.location.pathname;
@@ -312,12 +323,12 @@ export default function App() {
             )}
             {currentPage === 'home' && (
               <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                <Home onArticleClick={navigateToArticle} articles={articles} onCategoryClick={handleCategorySelect} onNavigate={handleNavigate} loading={isLoadingArticles} />
+                <Home onArticleClick={navigateToArticle} articles={recentArticles} onCategoryClick={handleCategorySelect} onNavigate={handleNavigate} loading={isLoadingArticles} />
               </motion.div>
             )}
             {currentPage === 'category' && (
               <motion.div key={`cat-${activeCategory}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-                <CategoryPage category={activeCategory} onArticleClick={navigateToArticle} articles={articles} onHomeClick={() => handleCategorySelect('')} loading={isLoadingArticles} user={user} onArticlePublished={loadArticles} />
+                <CategoryPage category={activeCategory} onArticleClick={navigateToArticle} articles={recentArticles} onHomeClick={() => handleCategorySelect('')} loading={isLoadingArticles} user={user} onArticlePublished={loadArticles} />
               </motion.div>
             )}
             {currentPage === 'article' && selectedArticle && (
