@@ -399,3 +399,189 @@ BEGIN
     $policy$;
   END IF;
 END $$;
+
+-- ── Backfill: tables created out-of-band (Supabase dashboard/SQL editor)
+-- that AdminDashboard.tsx already depends on, never previously committed
+-- here. Column shapes below were confirmed against the live database's
+-- PostgREST OpenAPI schema, not guessed — this is disaster-recovery
+-- documentation, not a behavior change. Column additions made as part
+-- of the same fix pass (deadline/category/level/image_url/author/status,
+-- the career_applications table) live in supabase/cms_data_fixes.sql
+-- instead, matching this repo's existing pattern of separate dated
+-- patch files (see fix_user_id_reconciliation.sql, rls_hardening.sql).
+
+CREATE TABLE IF NOT EXISTS public.site_config (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='site_config' AND policyname='Public can read site config') THEN
+    CREATE POLICY "Public can read site config" ON public.site_config FOR SELECT USING (true);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='site_config' AND policyname='Staff can manage site config') THEN
+    CREATE POLICY "Staff can manage site config" ON public.site_config FOR ALL TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff());
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.podcasts (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  episode     TEXT,
+  category    TEXT,
+  description TEXT,
+  audio_url   TEXT,
+  video_url   TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.podcasts ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='podcasts' AND policyname='Public can read podcasts') THEN
+    CREATE POLICY "Public can read podcasts" ON public.podcasts FOR SELECT USING (true);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='podcasts' AND policyname='Staff can manage podcasts') THEN
+    CREATE POLICY "Staff can manage podcasts" ON public.podcasts FOR ALL TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff());
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.live_ads (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand         TEXT NOT NULL,
+  tagline       TEXT,
+  cta_text      TEXT,
+  cta_url       TEXT,
+  logo          TEXT,
+  accent_color  TEXT,
+  placement     TEXT,
+  package_tier  TEXT,
+  active        BOOLEAN DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.live_ads ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='live_ads' AND policyname='Public can read active ads') THEN
+    CREATE POLICY "Public can read active ads" ON public.live_ads FOR SELECT USING (true);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='live_ads' AND policyname='Staff can manage ads') THEN
+    CREATE POLICY "Staff can manage ads" ON public.live_ads FOR ALL TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff());
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.ad_enquiries (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  company    TEXT,
+  package    TEXT,
+  message    TEXT,
+  status     TEXT DEFAULT 'new',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.ad_enquiries ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ad_enquiries' AND policyname='Public can submit ad enquiries') THEN
+    CREATE POLICY "Public can submit ad enquiries" ON public.ad_enquiries FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ad_enquiries' AND policyname='Staff can manage ad enquiries') THEN
+    CREATE POLICY "Staff can manage ad enquiries" ON public.ad_enquiries FOR ALL TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff());
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.community_events (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  date        TEXT,
+  location    TEXT,
+  category    TEXT,
+  description TEXT,
+  active      BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS public.community_jobs (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  company     TEXT,
+  location    TEXT,
+  type        TEXT,
+  description TEXT,
+  link        TEXT,
+  active      BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS public.community_scholarships (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  provider    TEXT,
+  deadline    TEXT,
+  amount      TEXT,
+  description TEXT,
+  link        TEXT,
+  active      BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS public.community_polls (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question   TEXT NOT NULL,
+  options    JSONB NOT NULL DEFAULT '[]',
+  active     BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['community_events','community_jobs','community_scholarships','community_polls'] LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=t AND policyname='Public can read active '||t) THEN
+      EXECUTE format('CREATE POLICY %L ON public.%I FOR SELECT USING (true)', 'Public can read active '||t, t);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=t AND policyname='Staff can manage '||t) THEN
+      EXECUTE format('CREATE POLICY %L ON public.%I FOR ALL TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff())', 'Staff can manage '||t, t);
+    END IF;
+  END LOOP;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.contact_submissions (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  subject    TEXT,
+  message    TEXT NOT NULL,
+  status     TEXT DEFAULT 'new',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.contact_submissions ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='contact_submissions' AND policyname='Public can submit contact messages') THEN
+    CREATE POLICY "Public can submit contact messages" ON public.contact_submissions FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.story_submissions (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  title      TEXT,
+  content    TEXT,
+  category   TEXT,
+  status     TEXT DEFAULT 'new',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.story_submissions ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='story_submissions' AND policyname='Public can submit stories') THEN
+    CREATE POLICY "Public can submit stories" ON public.story_submissions FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
+
+-- Staff SELECT/UPDATE/DELETE policies for contact_submissions,
+-- story_submissions, career_applications, and comments' status column +
+-- moderation policies are added by supabase/cms_data_fixes.sql.

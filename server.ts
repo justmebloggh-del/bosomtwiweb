@@ -82,6 +82,7 @@ function dbToArticle(row: any) {
     author:      row.author,
     publishedAt: row.published_at,
     updatedAt:   row.updated_at || null,
+    scheduledAt: row.scheduled_at || null,
     excerpt:     row.excerpt  || '',
     content:     row.content  || '',
     image:       row.image    || '',

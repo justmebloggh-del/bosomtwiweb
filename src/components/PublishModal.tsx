@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine, Bold, Italic, Image, Play } from 'lucide-react';
+import { X, FileText, Globe, Share2, Loader2, ImageIcon, AlertTriangle, CheckCircle, Upload, PenLine, Bold, Italic, Image, Play, Link2, Paperclip } from 'lucide-react';
 import { motion } from 'motion/react';
 import { User, Article } from '../types';
 import { supabase } from '../lib/supabase';
@@ -24,6 +24,7 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
 
   const [form, setForm] = useState({
     title:    isEdit ? editArticle.title    : '',
+    slug:     isEdit ? editArticle.slug     : '',
     category: isEdit
       ? editArticle.category
       : (defaultCategory && ALL_CATEGORIES.includes(defaultCategory) ? defaultCategory : ALL_CATEGORIES[0]),
@@ -39,6 +40,25 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
   const [uploadError, setUploadError] = useState('');
   const [status, setStatus]         = useState({ text: '', type: '' });
   const [saving, setSaving]         = useState(false);
+
+  // Draft / schedule — scheduledAt uses the <input type="datetime-local">
+  // format (no timezone suffix); converted to an ISO string on save.
+  // Scheduling only stores the target time and marks the article as a
+  // draft — there's no cron job in this app to flip it to 'published'
+  // automatically at that time, so an editor still has to come back and
+  // hit Publish. The field exists so the intended date is visible and
+  // not lost, not to promise unattended auto-publish.
+  const toLocalInputValue = (iso?: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [scheduledAt, setScheduledAt] = useState(
+    isEdit ? toLocalInputValue((editArticle as any).scheduledAt) : ''
+  );
+  const currentStatus = isEdit ? (editArticle as any).status || 'published' : 'published';
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,15 +86,34 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
     }
   };
 
-  const handleSave = async () => {
+  const [slugError, setSlugError] = useState('');
+
+  const handleSave = async (action: 'draft' | 'publish') => {
     if (!form.title.trim() || !form.excerpt.trim()) {
       setStatus({ text: 'Headline and excerpt are required.', type: 'error' });
       return;
     }
     setSaving(true);
     setStatus({ text: '', type: '' });
+    setSlugError('');
     try {
-      const slug = form.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const slug = (form.slug || form.title).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+      // Uniqueness check — slugs are the public URL, so a silent collision
+      // means one of two articles becomes unreachable.
+      let dupe = supabase.from('articles').select('id').eq('slug', slug);
+      if (isEdit) dupe = dupe.neq('id', editArticle.id);
+      const { data: existing } = await dupe.limit(1);
+      if (existing && existing.length > 0) {
+        setSlugError(`That slug is already used by another article. Edit the slug field above.`);
+        setSaving(false);
+        return;
+      }
+
+      const isScheduled = action === 'publish' && scheduledAt && new Date(scheduledAt) > new Date();
+      const finalStatus = action === 'draft' ? 'draft' : isScheduled ? 'draft' : 'published';
+      const scheduledIso = scheduledAt ? new Date(scheduledAt).toISOString() : null;
+
       const payload = {
         title:        form.title,
         slug,
@@ -84,7 +123,8 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
         content:      form.content || '',
         image:        form.image || 'https://images.unsplash.com/photo-1590424753858-3b6b197f89f4?auto=format&fit=crop&q=80&w=800',
         video_url:    form.videoUrl || '',
-        status:       'published',
+        status:       finalStatus,
+        scheduled_at: scheduledIso,
       };
 
       if (isEdit) {
@@ -101,7 +141,10 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
           ...payload,
         });
         if (error) throw new Error(error.message);
-        setStatus({ text: 'Story is live!', type: 'success' });
+        setStatus({
+          text: finalStatus === 'draft' ? (isScheduled ? 'Draft saved — scheduled, publish it yourself when ready.' : 'Draft saved!') : 'Story is live!',
+          type: 'success',
+        });
       }
 
       setTimeout(() => { onPublished(); onClose(); }, 900);
@@ -155,6 +198,37 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
     }
   };
 
+  const DOCUMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!DOCUMENT_EXTENSIONS.includes(ext)) {
+      setStatus({ text: 'Only PDF, Word, Excel, and PowerPoint files are supported.', type: 'error' });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) { setStatus({ text: 'Document must be under 20 MB.', type: 'error' }); return; }
+    setUploading(true);
+    try {
+      const path = `doc-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('article-documents')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from('article-documents').getPublicUrl(data.path);
+      // name/size are encoded alongside the URL (pipe-delimited — none of
+      // the three can contain a literal "|") so the rendered attachment
+      // card can show the original filename and size without a second
+      // request; ArticleView.tsx's renderBody() parses this back apart.
+      set('content', form.content + `\n[file]${publicUrl}|${file.name.replace(/\|/g, '-')}|${file.size}[/file]\n`);
+    } catch (err: any) {
+      setStatus({ text: err.message || 'Upload failed — check storage bucket exists.', type: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] flex items-start md:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto p-0 md:p-6">
       <motion.div
@@ -194,6 +268,11 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
               {status.text}
             </div>
           )}
+          {slugError && (
+            <div className="flex items-center gap-2 p-3 rounded-xl text-sm font-bold bg-red-50 text-red-600 border border-red-100">
+              <AlertTriangle size={15} /> {slugError}
+            </div>
+          )}
 
           {/* Headline + Category */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -219,6 +298,20 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
                 {ALL_CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* Slug */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+              URL Slug {!isEdit && <span className="text-slate-300">(auto-filled from headline — edit if you need to)</span>}
+            </label>
+            <input
+              type="text"
+              value={form.slug || form.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}
+              onChange={e => set('slug', e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+              className="w-full border-b-2 border-slate-200 py-2.5 font-mono text-sm focus:outline-none focus:border-ashanti-gold transition-all"
+              placeholder="auto-generated-from-headline"
+            />
           </div>
 
           {/* Author + Video URL */}
@@ -445,6 +538,36 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
                 <Play size={14} /> Upload Video
                 <input type="file" accept="video/*" className="hidden" onChange={handleBodyVideoUpload} disabled={uploading} />
               </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const url = prompt('Enter the URL to link to:');
+                  if (!url) return;
+                  const textarea = textareaRef.current;
+                  const start = textarea?.selectionStart ?? form.content.length;
+                  const end = textarea?.selectionEnd ?? form.content.length;
+                  const selected = form.content.substring(start, end) || prompt('Link text to display:', url) || url;
+                  const before = form.content.substring(0, start);
+                  const after = form.content.substring(end);
+                  set('content', before + `[link:${url}]${selected}[/link]` + after);
+                }}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                title="Insert Link — select text first to link it, or leave nothing selected to pick link text"
+              >
+                <Link2 size={14} /> Link
+              </button>
+
+              <label className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="Attach PDF, Word, Excel, or PowerPoint file">
+                <Paperclip size={14} /> Attach Document
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="hidden"
+                  onChange={handleDocumentUpload}
+                  disabled={uploading}
+                />
+              </label>
             </div>
 
             {/* Content Textarea */}
@@ -459,7 +582,7 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
 
             {/* Formatting Tips */}
             <p className="text-[10px] text-slate-500">
-              💡 Tips: Use <span className="font-mono bg-slate-100 px-1">**text**</span> for bold, <span className="font-mono bg-slate-100 px-1">_text_</span> for italic, or use the toolbar above.
+              💡 Tips: Use <span className="font-mono bg-slate-100 px-1">**text**</span> for bold, <span className="font-mono bg-slate-100 px-1">_text_</span> for italic, or use the toolbar above to insert links or attach PDF/Word/Excel/PowerPoint files readers can download.
             </p>
 
             {/* Embedded media previews */}
@@ -508,21 +631,86 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
                 </div>
               );
             })()}
+
+            {/* Attached document previews */}
+            {(() => {
+              const files = [...(form.content.matchAll(/\[file\]([^|]+)\|([^|]*)\|(\d*)\[\/file\]/g))]
+                .map(m => ({ raw: m[0], url: m[1], name: m[2] || 'Document', size: Number(m[3]) || 0 }));
+              if (files.length === 0) return null;
+              return (
+                <div className="space-y-2 pt-1">
+                  <p className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+                    Attached documents ({files.length})
+                  </p>
+                  <div className="space-y-1.5">
+                    {files.map((f, i) => (
+                      <div key={`pf${i}`} className="flex items-center justify-between gap-2 p-2.5 bg-white border border-slate-200 rounded-lg">
+                        <span className="text-xs font-bold text-slate-700 truncate flex items-center gap-1.5 min-w-0">
+                          <FileText size={13} className="shrink-0" />
+                          <span className="truncate">{f.name}</span>
+                          {f.size > 0 && <span className="text-slate-400 font-normal shrink-0">({Math.max(1, Math.round(f.size / 1024))} KB)</span>}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => set('content', form.content.replace(f.raw, ''))}
+                          className="text-red-500 hover:text-red-600 text-sm font-black shrink-0"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
-          {/* Save / Publish button */}
-          <button
-            onClick={handleSave}
-            disabled={saving || uploading}
-            className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-sm md:text-base ${
-              isEdit
-                ? 'bg-[#1a0a35] text-white hover:bg-black'
-                : 'bg-ashanti-gold text-black'
-            }`}
-          >
-            {saving ? <Loader2 size={18} className="animate-spin" /> : isEdit ? <PenLine size={18} /> : <Share2 size={18} />}
-            <span>{saving ? (isEdit ? 'Saving…' : 'Publishing…') : (isEdit ? 'Save Changes' : 'Publish Story')}</span>
-          </button>
+          {/* Schedule (optional) */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+              Schedule for later (optional) — still requires you to come back and hit Publish; nothing auto-publishes
+            </label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={e => setScheduledAt(e.target.value)}
+              className="w-full border-b-2 border-slate-200 py-2.5 text-sm focus:outline-none focus:border-ashanti-gold transition-all"
+            />
+          </div>
+
+          {currentStatus === 'draft' && (
+            <p className="text-[11px] font-bold uppercase tracking-widest text-amber-600">This article is currently a draft — not visible on the public site.</p>
+          )}
+
+          {/* Save Draft / Publish buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleSave('draft')}
+              disabled={saving || uploading}
+              className="flex-1 py-4 rounded-2xl font-black uppercase tracking-[0.2em] border-2 border-slate-200 text-slate-500 hover:border-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+              Save as Draft
+            </button>
+            <button
+              onClick={() => handleSave('publish')}
+              disabled={saving || uploading}
+              className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-sm md:text-base ${
+                isEdit
+                  ? 'bg-[#1a0a35] text-white hover:bg-black'
+                  : 'bg-ashanti-gold text-black'
+              }`}
+            >
+              {saving ? <Loader2 size={18} className="animate-spin" /> : isEdit ? <PenLine size={18} /> : <Share2 size={18} />}
+              <span>
+                {saving
+                  ? (isEdit ? 'Saving…' : 'Publishing…')
+                  : scheduledAt && new Date(scheduledAt) > new Date()
+                    ? 'Schedule'
+                    : (isEdit ? 'Publish Changes' : 'Publish Story')}
+              </span>
+            </button>
+          </div>
 
           <div className="h-4 md:h-0" />
         </div>

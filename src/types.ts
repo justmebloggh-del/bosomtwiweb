@@ -11,6 +11,7 @@ export interface Article {
   content?: string;
   videoUrl?: string;
   status?: string;
+  scheduledAt?: string | null;
 }
 
 export interface User {

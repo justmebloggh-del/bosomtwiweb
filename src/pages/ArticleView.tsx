@@ -2,7 +2,7 @@ import { Article, User } from '../types';
 import {
   Share2, Bookmark, MessageSquare, ArrowLeft, Calendar,
   ArrowUpRight, Link, Check, PenLine, Loader2, Volume2, VolumeX,
-  Clock, Eye
+  Clock, Eye, FileText, FileSpreadsheet, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect, ReactNode, ReactElement, useRef } from 'react';
@@ -47,7 +47,7 @@ interface Comment {
 // ── Content renderer ─────────────────────────────────────────────
 
 function renderInline(text: string): ReactNode {
-  const TOKEN = /(\*\*[^*\n]+\*\*|_[^_\n]+_|\[size:(?:sm|base|lg|xl)\][^\[]+\[\/size\])/g;
+  const TOKEN = /(\*\*[^*\n]+\*\*|_[^_\n]+_|\[size:(?:sm|base|lg|xl)\][^\[]+\[\/size\]|\[link:[^\]]+\][^\[]+\[\/link\])/g;
   const parts: ReactNode[] = [];
   let last = 0, k = 0;
   let m: RegExpExecArray | null;
@@ -58,6 +58,18 @@ function renderInline(text: string): ReactNode {
       parts.push(<strong key={k++}>{tok.slice(2, -2)}</strong>);
     } else if (tok.startsWith('_')) {
       parts.push(<em key={k++}>{tok.slice(1, -1)}</em>);
+    } else if (tok.startsWith('[link:')) {
+      const lm = tok.match(/^\[link:([^\]]+)\](.*)\[\/link\]$/s);
+      if (lm) {
+        parts.push(
+          <a key={k++} href={lm[1]} target="_blank" rel="noopener noreferrer"
+            className="text-ashanti-gold underline decoration-ashanti-gold/40 hover:decoration-ashanti-gold transition-colors">
+            {lm[2]}
+          </a>
+        );
+      } else {
+        parts.push(<span key={k++}>{tok}</span>);
+      }
     } else {
       const sm = tok.match(/^\[size:(sm|base|lg|xl)\](.*)\[\/size\]$/s);
       if (sm) {
@@ -137,6 +149,45 @@ function renderVideoEmbed(url: string, key: string): ReactElement {
   );
 }
 
+const DOCUMENT_KINDS: Record<string, { label: string; accent: string; spreadsheet?: boolean }> = {
+  pdf:  { label: 'PDF Document', accent: '#DC2626' },
+  doc:  { label: 'Word Document', accent: '#2563EB' },
+  docx: { label: 'Word Document', accent: '#2563EB' },
+  ppt:  { label: 'PowerPoint Presentation', accent: '#EA580C' },
+  pptx: { label: 'PowerPoint Presentation', accent: '#EA580C' },
+  xls:  { label: 'Excel Spreadsheet', accent: '#16A34A', spreadsheet: true },
+  xlsx: { label: 'Excel Spreadsheet', accent: '#16A34A', spreadsheet: true },
+};
+
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Downloadable attachment card — the pattern most major news sites use
+// for a source document (court filing, government report, dataset)
+// linked from inside an article, rather than embedding it inline.
+function renderFileAttachment(url: string, filename: string, sizeBytes: number, key: string): ReactElement {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const kind = DOCUMENT_KINDS[ext] || { label: 'Document', accent: '#6B7280' };
+  const Icon = kind.spreadsheet ? FileSpreadsheet : FileText;
+  const sizeText = formatFileSize(sizeBytes);
+  return (
+    <a key={key} href={url} target="_blank" rel="noopener noreferrer" download={filename}
+      className="my-6 flex items-center gap-4 p-4 rounded-2xl border border-news-border bg-news-card hover:border-ashanti-gold/40 transition-all group no-underline">
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${kind.accent}1A` }}>
+        <Icon size={22} style={{ color: kind.accent }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm text-news-text truncate group-hover:text-ashanti-gold transition-colors">{filename}</p>
+        <p className="text-[11px] text-news-muted font-bold uppercase tracking-widest">{kind.label}{sizeText ? ` · ${sizeText}` : ''}</p>
+      </div>
+      <Download size={18} className="text-news-muted group-hover:text-ashanti-gold transition-colors shrink-0" />
+    </a>
+  );
+}
+
 function renderBody(content: string): ReactElement[] {
   const lines = content.split('\n');
   const out: ReactElement[] = [];
@@ -157,6 +208,11 @@ function renderBody(content: string): ReactElement[] {
     if (t.startsWith('[video]') && t.endsWith('[/video]')) {
       const url = t.slice(7, -8);
       if (url) { flush(); out.push(renderVideoEmbed(url, `vid${n++}`)); continue; }
+    }
+    if (t.startsWith('[file]') && t.endsWith('[/file]')) {
+      const inner = t.slice(6, -7);
+      const [url, filename, sizeStr] = inner.split('|');
+      if (url) { flush(); out.push(renderFileAttachment(url, filename || 'Document', Number(sizeStr) || 0, `file${n++}`)); continue; }
     }
     if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(t)) { flush(); out.push(<figure key={`bimg${n++}`} className="my-8 rounded-2xl overflow-hidden shadow-lg"><img src={optimizedImageUrl(t, 900)} alt="" loading="lazy" className="w-full h-auto object-cover" /></figure>); continue; }
     if (/^https?:\/\/.+\.(mp4|webm|mov|avi|m4v)(\?.*)?$/i.test(t)) { flush(); out.push(renderVideoEmbed(t, `bvid${n++}`)); continue; }
@@ -311,6 +367,7 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
       supabase.rpc('increment_article_views', { p_article_id: article.id }).then(() => {}, () => {});
     }
     supabase.from('comments').select('*').eq('article_id', article.id)
+      .neq('status', 'rejected')
       .order('created_at', { ascending: true })
       .then(({ data }) => setComments((data as Comment[]) || []));
   }, [article.id]);

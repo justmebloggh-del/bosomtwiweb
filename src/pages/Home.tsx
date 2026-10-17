@@ -262,13 +262,13 @@ function BreakingTicker({ articles, onArticleClick }: { articles: Article[]; onA
   const [manualText, setManualText] = useState('');
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('bw_breaking');
-      if (saved) {
-        const { text, active } = JSON.parse(saved);
+    supabase.from('site_config').select('key,value').in('key', ['breaking_news_text', 'breaking_news_active'])
+      .then(({ data }) => {
+        if (!data) return;
+        const text = data.find(r => r.key === 'breaking_news_text')?.value || '';
+        const active = data.find(r => r.key === 'breaking_news_active')?.value === 'true';
         if (active && text) setManualText(text.trim());
-      }
-    } catch { /* */ }
+      });
   }, []);
 
   type TickerItem = { id: string; title: string; isManual?: boolean };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Megaphone, Mail, TrendingUp, Users, BarChart2, Check, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -88,6 +88,25 @@ export default function Advertise({ onBack }: AdvertiseProps) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
 
+  // Price/period/"Popular" can be overridden from the admin dashboard's
+  // Advertise → Ad Packages editor (stored in site_config, not a
+  // separate table — it only ever edits these three fields, never the
+  // description/feature list below, which stay hardcoded).
+  const [packages, setPackages] = useState(PACKAGES);
+  useEffect(() => {
+    supabase.from('site_config').select('value').eq('key', 'ad_package_overrides').maybeSingle()
+      .then(({ data }) => {
+        if (!data?.value) return;
+        try {
+          const overrides = JSON.parse(data.value) as { name: string; price: string; period: string; popular: boolean }[];
+          setPackages(PACKAGES.map(p => {
+            const o = overrides.find(x => x.name === p.name);
+            return o ? { ...p, price: o.price, period: o.period, popular: o.popular } : p;
+          }));
+        } catch { /* ignore malformed stored value */ }
+      });
+  }, []);
+
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     setSending(true);
@@ -164,7 +183,7 @@ export default function Advertise({ onBack }: AdvertiseProps) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {PACKAGES.map(pkg => (
+          {packages.map(pkg => (
             <div
               key={pkg.name}
               className={`bg-white rounded-3xl border p-8 relative shadow-sm transition-shadow hover:shadow-xl ${pkg.popular ? 'border-ashanti-gold ring-2 ring-ashanti-gold/20' : 'border-brand-secondary/10'}`}
@@ -280,7 +299,7 @@ export default function Advertise({ onBack }: AdvertiseProps) {
                     className="w-full border-b-2 border-brand-accent bg-transparent py-3 font-semibold text-news-text focus:outline-none focus:border-ashanti-gold transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Select a package</option>
-                    {PACKAGES.map(pkg => (
+                    {packages.map(pkg => (
                       <option key={pkg.name} value={pkg.name}>{pkg.name} — {pkg.price}{pkg.period}</option>
                     ))}
                     <option value="Custom">Custom / Other</option>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import PublishModal from '../components/PublishModal';
 import { supabase } from '../lib/supabase';
 import { User, Article } from '../types';
@@ -10,8 +10,14 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 
-const TABS = ['Articles', 'Analytics', 'Authors', 'Comments', 'Breaking News', 'TV', 'Podcasts', 'Advertise', 'Community', 'Settings'] as const;
+const TABS = ['Articles', 'Analytics', 'Authors', 'Inbox', 'Comments', 'Breaking News', 'TV', 'Podcasts', 'Advertise', 'Community', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
+
+// Tabs visible only to admins — everything else is shared with journalists.
+// Enforced here in the UI; the underlying tables are enforced the same way
+// via is_admin()/is_staff() RLS policies, so this is a convenience gate,
+// not the real security boundary.
+const ADMIN_ONLY_TABS: readonly Tab[] = ['Breaking News', 'TV', 'Advertise', 'Settings'];
 
 const ALL_CATEGORIES = [
   'All', 'Manhyia', 'News', 'Politics', 'Business', 'Education',
@@ -37,6 +43,47 @@ interface AnalyticsData {
   weeklyVisits: number;
   monthlyVisits: number;
   visitChartData: { date: string; visits: number }[];
+}
+
+const INBOX_STATUSES = ['new', 'read', 'replied', 'archived'] as const;
+
+function InboxCard({ status, onStatusChange, onDelete, createdAt, children }: {
+  status?: string;
+  onStatusChange: (status: string) => void;
+  onDelete: () => void;
+  createdAt?: string;
+  children: ReactNode;
+}) {
+  const s = status || 'new';
+  const badgeClass =
+    s === 'replied'  ? 'bg-green-900/30 text-green-400' :
+    s === 'archived' ? 'bg-gray-500/20 text-gray-400' :
+    s === 'read'     ? 'bg-blue-900/30 text-blue-400' :
+    'bg-ashanti-gold/10 text-ashanti-gold';
+  return (
+    <div className="bg-news-card rounded-2xl border border-news-border shadow-sm px-5 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${badgeClass}`}>{s}</span>
+          <div className="mt-2">{children}</div>
+          {createdAt && (
+            <p className="text-[10px] text-news-muted mt-2">
+              {new Date(createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <select value={s} onChange={e => onStatusChange(e.target.value)}
+            className="text-[10px] font-bold bg-brand-surface border border-news-border rounded-lg px-2 py-1 text-news-text focus:outline-none focus:border-ashanti-gold transition-colors">
+            {INBOX_STATUSES.map(v => <option key={v} value={v}>{v[0].toUpperCase() + v.slice(1)}</option>)}
+          </select>
+          <button onClick={onDelete} className="p-1.5 rounded-xl hover:bg-red-900/20 text-news-muted hover:text-red-400 transition-colors border border-transparent hover:border-red-900/30">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function resizeImageToBase64(file: File, maxPx = 200): Promise<string> {
@@ -68,6 +115,7 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [editArticle, setEditArticle] = useState<Article | null>(null);
   const [deletingArticleId, setDeletingArticleId] = useState<string | null>(null);
   const [articleCatFilter, setArticleCatFilter] = useState('All');
+  const [articleStatusFilter, setArticleStatusFilter] = useState<'All' | 'published' | 'draft'>('All');
 
   // Settings — author management
   const [editingAuthor, setEditingAuthor] = useState<any | null>(null);
@@ -82,10 +130,6 @@ export default function AdminDashboard({ user }: { user: User }) {
   const [editAdForm, setEditAdForm] = useState({ brand: '', tagline: '', cta_text: '', cta_url: '', logo: '', accent_color: '', placement: '', package_tier: '' });
   const [deletingAdId, setDeletingAdId] = useState<string | null>(null);
 
-  // Settings — general
-  const [siteTitle, setSiteTitle] = useState('Bosomtwi Web');
-  const [settingsStatus, setSettingsStatus] = useState('');
-
   // TV tab
   const [liveTvUrl, setLiveTvUrl] = useState('');
   const [bosomtwiTvUrl, setBosomtwiTvUrl] = useState('');
@@ -95,6 +139,13 @@ export default function AdminDashboard({ user }: { user: User }) {
   // Comments tab
   const [comments, setComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
+
+  // Inbox tab
+  const [inboxSubTab, setInboxSubTab] = useState<'Contact' | 'Stories' | 'Careers'>('Contact');
+  const [contactMsgs, setContactMsgs] = useState<any[]>([]);
+  const [storySubs, setStorySubs] = useState<any[]>([]);
+  const [careerApps, setCareerApps] = useState<any[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
 
   // Breaking News tab
   const [breakingText, setBreakingText] = useState('');
@@ -125,6 +176,8 @@ export default function AdminDashboard({ user }: { user: User }) {
     { name: 'Gold',             price: 'GH₵3,500', period: '/month',   popular: true  },
     { name: 'Sponsored Content',price: 'GH₵800',   period: '/article', popular: false },
   ]);
+  const [adPackagesSaving, setAdPackagesSaving] = useState(false);
+  const [adPackagesStatus, setAdPackagesStatus] = useState('');
 
   // Community tab
   const [commSubTab, setCommSubTab] = useState<'Events'|'Jobs'|'Scholarships'|'Polls'>('Events');
@@ -149,7 +202,38 @@ export default function AdminDashboard({ user }: { user: User }) {
     fetchLiveAds();
     fetchTvUrls();
     fetchCommunity();
+    fetchInbox();
+    fetchAdPackages();
   }, []);
+
+  async function fetchAdPackages() {
+    const { data } = await supabase.from('site_config').select('value').eq('key', 'ad_package_overrides').maybeSingle();
+    if (data?.value) {
+      try {
+        const saved = JSON.parse(data.value);
+        setAdPackages(prev => prev.map(p => saved.find((s: any) => s.name === p.name) ?? p));
+      } catch { /* ignore malformed stored value */ }
+    }
+  }
+
+  async function saveAdPackages() {
+    setAdPackagesSaving(true);
+    setAdPackagesStatus('');
+    const { error } = await supabase.from('site_config').upsert(
+      { key: 'ad_package_overrides', value: JSON.stringify(adPackages) },
+      { onConflict: 'key' },
+    );
+    setAdPackagesSaving(false);
+    setAdPackagesStatus(error ? 'Error: ' + error.message : '✓ Saved — live on the public Advertise page.');
+    setTimeout(() => setAdPackagesStatus(''), 4000);
+  }
+
+  // Defensive: the admin-only tabs are only reachable via the nav buttons
+  // above, which already hide them from non-admins, but guard the
+  // underlying state too in case `tab` is ever set another way.
+  useEffect(() => {
+    if (user.role !== 'admin' && ADMIN_ONLY_TABS.includes(tab)) setTab('Articles');
+  }, [user.role, tab]);
 
   async function fetchTvUrls() {
     const { data } = await supabase.from('site_config').select('key,value').in('key', ['live_tv_url', 'bosomtwi_tv_url']);
@@ -202,6 +286,29 @@ export default function AdminDashboard({ user }: { user: User }) {
   async function commDelete(table: string, id: string) {
     await supabase.from(table).delete().eq('id', id);
     fetchCommunity();
+  }
+
+  async function fetchInbox() {
+    setInboxLoading(true);
+    const [{ data: contact }, { data: stories }, { data: careers }] = await Promise.all([
+      supabase.from('contact_submissions').select('*').order('created_at', { ascending: false }),
+      supabase.from('story_submissions').select('*').order('created_at', { ascending: false }),
+      supabase.from('career_applications').select('*').order('created_at', { ascending: false }),
+    ]);
+    setContactMsgs(contact || []);
+    setStorySubs(stories || []);
+    setCareerApps(careers || []);
+    setInboxLoading(false);
+  }
+
+  async function updateInboxStatus(table: string, id: string, status: string) {
+    await supabase.from(table).update({ status }).eq('id', id);
+    fetchInbox();
+  }
+
+  async function deleteInboxItem(table: string, id: string) {
+    await supabase.from(table).delete().eq('id', id);
+    fetchInbox();
   }
 
   async function fetchAdEnquiries() {
@@ -348,15 +455,14 @@ export default function AdminDashboard({ user }: { user: User }) {
     setCommentsLoading(false);
   }
 
-  function fetchBreakingNews() {
-    try {
-      const saved = localStorage.getItem('bw_breaking');
-      if (saved) {
-        const { text, active } = JSON.parse(saved);
-        setBreakingText(text || '');
-        setBreakingActive(active ?? false);
-      }
-    } catch { /* */ }
+  async function fetchBreakingNews() {
+    const { data } = await supabase.from('site_config').select('key,value').in('key', ['breaking_news_text', 'breaking_news_active']);
+    if (data) {
+      data.forEach(row => {
+        if (row.key === 'breaking_news_text') setBreakingText(row.value || '');
+        if (row.key === 'breaking_news_active') setBreakingActive(row.value === 'true');
+      });
+    }
   }
 
   async function handleCommentAction(id: string, action: 'approve' | 'reject') {
@@ -369,24 +475,28 @@ export default function AdminDashboard({ user }: { user: User }) {
     fetchComments();
   }
 
-  function handleSaveBreakingNews(e: { preventDefault(): void }) {
+  async function handleSaveBreakingNews(e: { preventDefault(): void }) {
     e.preventDefault();
     setBreakingLoading(true);
     setBreakingStatus('');
-    try {
-      localStorage.setItem('bw_breaking', JSON.stringify({ text: breakingText.trim(), active: breakingActive }));
-      setBreakingStatus('✓ Breaking news updated!');
-    } catch {
-      setBreakingStatus('Failed to save.');
-    }
+    const rows = [
+      { key: 'breaking_news_text', value: breakingText.trim() },
+      { key: 'breaking_news_active', value: String(breakingActive) },
+    ];
+    const { error } = await supabase.from('site_config').upsert(rows, { onConflict: 'key' });
     setBreakingLoading(false);
+    if (error) setBreakingStatus('Error: ' + error.message);
+    else setBreakingStatus('✓ Breaking news updated — live for all visitors!');
     setTimeout(() => setBreakingStatus(''), 3000);
   }
 
-  function handleClearBreakingNews() {
+  async function handleClearBreakingNews() {
     setBreakingText('');
     setBreakingActive(false);
-    localStorage.removeItem('bw_breaking');
+    await supabase.from('site_config').upsert(
+      [{ key: 'breaking_news_text', value: '' }, { key: 'breaking_news_active', value: 'false' }],
+      { onConflict: 'key' },
+    );
     setBreakingStatus('Breaking news cleared.');
     setTimeout(() => setBreakingStatus(''), 3000);
   }
@@ -479,7 +589,7 @@ export default function AdminDashboard({ user }: { user: User }) {
               <p className="text-xs text-white/50 mt-0.5 uppercase tracking-widest font-bold">{user.name} · {user.role}</p>
             </div>
             <nav className="flex gap-1 flex-wrap">
-              {TABS.map(t => (
+              {TABS.filter(t => user.role === 'admin' || !ADMIN_ONLY_TABS.includes(t)).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -516,6 +626,20 @@ export default function AdminDashboard({ user }: { user: User }) {
               </button>
             </div>
 
+            {/* Status filter pills */}
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {(['All', 'published', 'draft'] as const).map(s => (
+                <button key={s} onClick={() => setArticleStatusFilter(s)}
+                  className={`text-[9px] uppercase tracking-widest font-black px-3 py-1.5 rounded-full transition-all ${
+                    articleStatusFilter === s
+                      ? 'bg-[#1a0a35] text-white shadow'
+                      : 'bg-brand-surface text-news-muted border border-news-border hover:border-ashanti-gold hover:text-ashanti-gold'
+                  }`}>
+                  {s === 'All' ? `All (${articles.length})` : `${s[0].toUpperCase() + s.slice(1)} (${articles.filter((a: any) => (a.status || 'published') === s).length})`}
+                </button>
+              ))}
+            </div>
+
             {/* Category filter pills */}
             <div className="flex gap-1.5 flex-wrap mb-5">
               {ALL_CATEGORIES.map(cat => (
@@ -535,7 +659,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="bg-brand-surface border-b border-news-border">
-                      {['Title', 'Category', 'Author', 'Views', 'Published', 'Actions'].map(h => (
+                      {['Title', 'Category', 'Status', 'Author', 'Views', 'Published', 'Actions'].map(h => (
                         <th
                           key={h}
                           className={`px-4 py-3 text-xs uppercase tracking-widest text-news-muted font-bold ${h === 'Actions' ? 'text-right' : 'text-left'}`}
@@ -546,13 +670,25 @@ export default function AdminDashboard({ user }: { user: User }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {articles.filter(a => articleCatFilter === 'All' || a.category === articleCatFilter).map(article => (
+                    {articles
+                      .filter((a: any) => articleCatFilter === 'All' || a.category === articleCatFilter)
+                      .filter((a: any) => articleStatusFilter === 'All' || (a.status || 'published') === articleStatusFilter)
+                      .map(article => (
                       <tr key={article.id} className="border-b border-news-border hover:bg-brand-surface transition-colors">
                         <td className="px-4 py-3 font-semibold max-w-[240px] truncate">{article.title}</td>
                         <td className="px-4 py-3">
                           <span className="bg-ashanti-gold/10 text-ashanti-gold text-[11px] font-bold px-2 py-0.5 rounded-full">
                             {article.category}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {(article as any).status === 'draft' ? (
+                            <span className="bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                              Draft{(article as any).scheduled_at ? ' · Scheduled' : ''}
+                            </span>
+                          ) : (
+                            <span className="bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">Published</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-news-muted text-xs">{article.author}</td>
                         <td className="px-4 py-3 font-mono text-sm">{article.views ?? 0}</td>
@@ -865,6 +1001,108 @@ export default function AdminDashboard({ user }: { user: User }) {
         )}
 
         {/* ── Comments ───────────────────────────────────────── */}
+        {/* ── Inbox ──────────────────────────────────────────── */}
+        {tab === 'Inbox' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  ['Contact', contactMsgs.length],
+                  ['Stories', storySubs.length],
+                  ['Careers', careerApps.length],
+                ] as const).map(([t, count]) => (
+                  <button key={t} onClick={() => setInboxSubTab(t)}
+                    className={`px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest transition-all ${
+                      inboxSubTab === t ? 'bg-ashanti-gold text-black' : 'bg-news-card border border-news-border text-news-muted hover:border-ashanti-gold/40'
+                    }`}>
+                    {t} ({count})
+                  </button>
+                ))}
+              </div>
+              <button onClick={fetchInbox} className="text-[10px] font-black uppercase tracking-widest text-ashanti-gold hover:text-news-text transition-colors">
+                ↻ Refresh
+              </button>
+            </div>
+
+            {inboxLoading ? (
+              <div className="flex items-center justify-center py-16 gap-3 text-news-muted">
+                <Loader2 size={18} className="animate-spin text-ashanti-gold" />
+                <span className="text-sm">Loading…</span>
+              </div>
+            ) : (
+              <>
+                {inboxSubTab === 'Contact' && (
+                  contactMsgs.length === 0 ? (
+                    <div className="text-center py-16 bg-news-card rounded-2xl border border-news-border text-news-muted text-sm">
+                      No contact messages yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {contactMsgs.map((m: any) => (
+                        <InboxCard key={m.id} status={m.status}
+                          onStatusChange={s => updateInboxStatus('contact_submissions', m.id, s)}
+                          onDelete={() => deleteInboxItem('contact_submissions', m.id)}
+                          createdAt={m.created_at}>
+                          <p className="font-bold text-sm">{m.name} <span className="text-news-muted font-normal text-xs">· {m.email}</span></p>
+                          {m.subject && <p className="text-[11px] text-ashanti-gold font-bold mt-0.5">{m.subject}</p>}
+                          <p className="text-sm text-news-text leading-relaxed mt-1.5">{m.message}</p>
+                        </InboxCard>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {inboxSubTab === 'Stories' && (
+                  storySubs.length === 0 ? (
+                    <div className="text-center py-16 bg-news-card rounded-2xl border border-news-border text-news-muted text-sm">
+                      No story pitches yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {storySubs.map((s: any) => (
+                        <InboxCard key={s.id} status={s.status}
+                          onStatusChange={v => updateInboxStatus('story_submissions', s.id, v)}
+                          onDelete={() => deleteInboxItem('story_submissions', s.id)}
+                          createdAt={s.created_at}>
+                          <p className="font-bold text-sm">{s.title || 'Untitled pitch'}</p>
+                          <p className="text-[11px] text-news-muted mt-0.5">{s.name} · {s.email}{s.category ? ` · ${s.category}` : ''}</p>
+                          <p className="text-sm text-news-text leading-relaxed mt-1.5 line-clamp-4">{s.content}</p>
+                        </InboxCard>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {inboxSubTab === 'Careers' && (
+                  careerApps.length === 0 ? (
+                    <div className="text-center py-16 bg-news-card rounded-2xl border border-news-border text-news-muted text-sm">
+                      No applications yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {careerApps.map((a: any) => (
+                        <InboxCard key={a.id} status={a.status}
+                          onStatusChange={v => updateInboxStatus('career_applications', a.id, v)}
+                          onDelete={() => deleteInboxItem('career_applications', a.id)}
+                          createdAt={a.created_at}>
+                          <p className="font-bold text-sm">{a.name} <span className="text-news-muted font-normal text-xs">· {a.email}{a.phone ? ` · ${a.phone}` : ''}</span></p>
+                          <p className="text-[11px] text-ashanti-gold font-bold mt-0.5">{a.role_title}{a.department ? ` · ${a.department}` : ''}</p>
+                          {a.cover_letter && <p className="text-sm text-news-text leading-relaxed mt-1.5 line-clamp-4">{a.cover_letter}</p>}
+                          {a.portfolio_url && (
+                            <a href={a.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-ashanti-gold font-bold underline mt-1 inline-block">
+                              Portfolio ↗
+                            </a>
+                          )}
+                        </InboxCard>
+                      ))}
+                    </div>
+                  )
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {tab === 'Comments' && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -1096,25 +1334,27 @@ export default function AdminDashboard({ user }: { user: User }) {
                 setPodcastUploading(true);
                 setPodcastStatus('');
                 try {
-                  const uploads: { type: string; path: string }[] = [];
+                  const uploads: { type: string; url: string }[] = [];
                   for (const [key, file] of [['audio', audioFile], ['video', videoFile]] as [string, File | null][]) {
                     if (!file) continue;
                     const ext = file.name.split('.').pop();
                     const path = `podcasts/${Date.now()}-${key}.${ext}`;
                     const { error } = await supabase.storage.from('podcasts').upload(path, file, { upsert: true });
                     if (error) throw new Error(`${key} upload failed: ${error.message}`);
-                    uploads.push({ type: key, path });
+                    const { data: pub } = supabase.storage.from('podcasts').getPublicUrl(path);
+                    uploads.push({ type: key, url: pub.publicUrl });
                   }
-                  await supabase.from('podcasts').insert({
+                  const { error: insertError } = await supabase.from('podcasts').insert({
                     title:       podcastForm.title.trim(),
                     description: podcastForm.description.trim() || null,
                     episode:     podcastForm.episode.trim() || null,
                     category:    podcastForm.category,
-                    audio_path:  uploads.find(u => u.type === 'audio')?.path ?? null,
-                    video_path:  uploads.find(u => u.type === 'video')?.path ?? null,
+                    audio_url:   uploads.find(u => u.type === 'audio')?.url ?? null,
+                    video_url:   uploads.find(u => u.type === 'video')?.url ?? null,
                     author:      user.name,
                     created_at:  new Date().toISOString(),
                   });
+                  if (insertError) throw new Error(insertError.message);
                   setPodcastStatus('✓ Podcast uploaded successfully');
                   setPodcastForm({ title: '', description: '', episode: '', category: 'General' });
                   setAudioFile(null);
@@ -1485,7 +1725,14 @@ export default function AdminDashboard({ user }: { user: User }) {
 
             {/* Package management */}
             <div>
-              <h2 className="text-lg font-bold mb-5">Ad Packages</h2>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold">Ad Packages</h2>
+                <button onClick={saveAdPackages} disabled={adPackagesSaving}
+                  className="bg-ashanti-gold text-black px-4 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest disabled:opacity-50 hover:opacity-90 flex items-center gap-2">
+                  {adPackagesSaving && <Loader2 size={12} className="animate-spin" />} Save Packages
+                </button>
+              </div>
+              {adPackagesStatus && <p className="text-xs font-bold text-ashanti-gold mb-3">{adPackagesStatus}</p>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {adPackages.map((pkg, i) => (
                   <div key={pkg.name} className="bg-news-card border border-news-border rounded-2xl p-5 space-y-3">
@@ -1515,7 +1762,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-news-muted mt-3">Changes update the public Advertise page immediately on next load.</p>
+              <p className="text-[10px] text-news-muted mt-3">Click "Save Packages" to update the public Advertise page — edits aren't saved automatically.</p>
             </div>
 
             {/* Enquiries table */}
@@ -1699,7 +1946,11 @@ export default function AdminDashboard({ user }: { user: User }) {
                     </div>
                   </div>
                   <button disabled={commSaving || !jobForm.title.trim() || !jobForm.company.trim()}
-                    onClick={() => { commAdd('community_jobs', { ...jobForm }); setJobForm({ title:'', company:'', location:'', type:'Full-Time', deadline:'', category:'', apply_url:'' }); }}
+                    onClick={() => {
+                      const { apply_url, ...rest } = jobForm;
+                      commAdd('community_jobs', { ...rest, link: apply_url });
+                      setJobForm({ title:'', company:'', location:'', type:'Full-Time', deadline:'', category:'', apply_url:'' });
+                    }}
                     className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:opacity-90 flex items-center gap-2">
                     {commSaving && <Loader2 size={12} className="animate-spin" />} Add Job
                   </button>
@@ -1750,7 +2001,11 @@ export default function AdminDashboard({ user }: { user: User }) {
                     </div>
                   </div>
                   <button disabled={commSaving || !scholarForm.title.trim() || !scholarForm.funder.trim()}
-                    onClick={() => { commAdd('community_scholarships', { ...scholarForm }); setScholarForm({ title:'', funder:'', level:'Undergraduate', deadline:'', amount:'', description:'', apply_url:'' }); }}
+                    onClick={() => {
+                      const { funder, apply_url, ...rest } = scholarForm;
+                      commAdd('community_scholarships', { ...rest, provider: funder, link: apply_url });
+                      setScholarForm({ title:'', funder:'', level:'Undergraduate', deadline:'', amount:'', description:'', apply_url:'' });
+                    }}
                     className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:opacity-90 flex items-center gap-2">
                     {commSaving && <Loader2 size={12} className="animate-spin" />} Add Scholarship
                   </button>
@@ -1761,7 +2016,7 @@ export default function AdminDashboard({ user }: { user: User }) {
                     <div key={sc.id} className="flex items-center justify-between gap-3 bg-news-card border border-news-border rounded-xl px-5 py-3">
                       <div className="min-w-0">
                         <p className="font-bold text-sm text-news-text truncate">{sc.title}</p>
-                        <p className="text-[10px] text-news-muted">{sc.funder} · {sc.level} · Deadline: {sc.deadline}</p>
+                        <p className="text-[10px] text-news-muted">{sc.provider} · {sc.level} · Deadline: {sc.deadline}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${sc.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{sc.active ? 'Active' : 'Hidden'}</span>
@@ -2024,44 +2279,6 @@ export default function AdminDashboard({ user }: { user: User }) {
               </div>
             </section>
 
-            {/* ── General settings ───────────────────────────── */}
-            <section className="bg-news-card rounded-2xl border border-news-border shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-news-border">
-                <h2 className="font-bold text-base">General</h2>
-                <p className="text-xs text-news-muted mt-0.5">Site-wide configuration.</p>
-              </div>
-              <div className="p-6">
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    setSettingsStatus('Settings saved!');
-                    setTimeout(() => setSettingsStatus(''), 3000);
-                  }}
-                  className="max-w-sm space-y-5"
-                >
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest text-news-muted font-bold block mb-1.5">
-                      Site Title
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border border-news-border rounded-xl px-4 py-2.5 text-sm font-semibold bg-brand-surface text-news-text focus:outline-none focus:border-ashanti-gold transition-colors"
-                      value={siteTitle}
-                      onChange={e => setSiteTitle(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="bg-ashanti-gold text-black px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-                  >
-                    Save
-                  </button>
-                  {settingsStatus && (
-                    <p className="text-xs font-bold text-green-400">{settingsStatus}</p>
-                  )}
-                </form>
-              </div>
-            </section>
           </div>
         )}
       </div>

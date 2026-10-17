@@ -150,8 +150,21 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function Poll({ poll }: { poll: typeof POLLS[0] }) {
-  const [voted, setVoted] = useState<number | null>(null);
+function Poll({ poll, onVote, initialVotedIndex }: {
+  poll: typeof POLLS[0] & { votes?: number[] };
+  onVote?: (optionIndex: number) => void;
+  initialVotedIndex?: number | null;
+}) {
+  const [voted, setVoted] = useState<number | null>(initialVotedIndex ?? null);
+  const hasRealVotes = Array.isArray(poll.votes);
+  const total = hasRealVotes ? poll.votes!.reduce((s, v) => s + v, 0) : poll.total;
+
+  const handleClick = (i: number) => {
+    if (voted !== null) return;
+    setVoted(i);
+    onVote?.(i);
+  };
+
   return (
     <div className="bg-news-card border border-news-border rounded-2xl p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -160,23 +173,28 @@ function Poll({ poll }: { poll: typeof POLLS[0] }) {
       </div>
       <h4 className="font-heading font-bold text-news-text text-lg leading-snug mb-5">{poll.question}</h4>
       <div className="space-y-3">
-        {poll.options.map((opt, i) => (
-          <button key={i} onClick={() => setVoted(i)} disabled={voted !== null}
-            className={`w-full text-left rounded-xl overflow-hidden border transition-all ${voted === i ? 'border-ashanti-gold' : 'border-news-border hover:border-ashanti-gold/40'}`}>
-            <div className="flex items-center justify-between px-4 py-2.5 relative">
-              {voted !== null && (
-                <div className="absolute inset-0 rounded-xl overflow-hidden">
-                  <div className="h-full bg-ashanti-gold/10 transition-all duration-700" style={{ width: `${opt.pct}%` }} />
-                </div>
-              )}
-              <span className={`relative text-sm font-medium z-10 ${voted === i ? 'text-ashanti-gold font-bold' : 'text-news-text'}`}>{opt.label}</span>
-              {voted !== null && <span className="relative z-10 text-[11px] font-black text-ashanti-gold">{opt.pct}%</span>}
-            </div>
-          </button>
-        ))}
+        {poll.options.map((opt, i) => {
+          const pct = hasRealVotes
+            ? (total + (voted !== null ? 1 : 0) > 0 ? Math.round(((poll.votes![i] + (voted === i ? 1 : 0)) / (total + (voted !== null ? 1 : 0))) * 100) : 0)
+            : opt.pct;
+          return (
+            <button key={i} onClick={() => handleClick(i)} disabled={voted !== null}
+              className={`w-full text-left rounded-xl overflow-hidden border transition-all ${voted === i ? 'border-ashanti-gold' : 'border-news-border hover:border-ashanti-gold/40'}`}>
+              <div className="flex items-center justify-between px-4 py-2.5 relative">
+                {voted !== null && (
+                  <div className="absolute inset-0 rounded-xl overflow-hidden">
+                    <div className="h-full bg-ashanti-gold/10 transition-all duration-700" style={{ width: `${pct}%` }} />
+                  </div>
+                )}
+                <span className={`relative text-sm font-medium z-10 ${voted === i ? 'text-ashanti-gold font-bold' : 'text-news-text'}`}>{opt.label}</span>
+                {voted !== null && <span className="relative z-10 text-[11px] font-black text-ashanti-gold">{pct}%</span>}
+              </div>
+            </button>
+          );
+        })}
       </div>
       <p className="text-[10px] text-news-muted mt-4">
-        {voted !== null ? `${(poll.total + 1).toLocaleString()} votes — thank you!` : `${poll.total.toLocaleString()} votes so far`}
+        {voted !== null ? `${(total + (hasRealVotes ? 1 : 0)).toLocaleString()} votes — thank you!` : `${total.toLocaleString()} votes so far`}
       </p>
     </div>
   );
@@ -207,17 +225,37 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
     supabase.from('community_events').select('*').eq('active', true).order('created_at', { ascending: false })
       .then(({ data }) => { if (data && data.length > 0) setDbEvents(data.map(e => ({ id: e.id, title: e.title, date: e.date, location: e.location, category: e.category, description: e.description, image: e.image_url || '' }))); });
     supabase.from('community_jobs').select('*').eq('active', true).order('created_at', { ascending: false })
-      .then(({ data }) => { if (data && data.length > 0) setDbJobs(data.map(j => ({ id: j.id, title: j.title, company: j.company, location: j.location, type: j.type, deadline: j.deadline, category: j.category, apply_url: j.apply_url }))); });
+      .then(({ data }) => { if (data && data.length > 0) setDbJobs(data.map(j => ({ id: j.id, title: j.title, company: j.company, location: j.location, type: j.type, deadline: j.deadline, category: j.category, apply_url: j.link }))); });
     supabase.from('community_scholarships').select('*').eq('active', true).order('created_at', { ascending: false })
-      .then(({ data }) => { if (data && data.length > 0) setDbScholarships(data.map(s => ({ id: s.id, title: s.title, funder: s.funder, level: s.level, deadline: s.deadline, amount: s.amount, description: s.description, apply_url: s.apply_url }))); });
+      .then(({ data }) => { if (data && data.length > 0) setDbScholarships(data.map(s => ({ id: s.id, title: s.title, funder: s.provider, level: s.level, deadline: s.deadline, amount: s.amount, description: s.description, apply_url: s.link }))); });
     supabase.from('community_polls').select('*').eq('active', true).order('created_at', { ascending: false })
-      .then(({ data }) => { if (data && data.length > 0) setDbPolls(data.map(p => ({ id: p.id, question: p.question, options: (p.options || []).map((o: any) => ({ label: o.label, pct: 0, votes: o.votes || 0 })), total: (p.options || []).reduce((s: number, o: any) => s + (o.votes || 0), 0) }))); });
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setDbPolls(data.map((p: any) => ({
+            id: p.id,
+            question: p.question,
+            options: (p.options || []).map((o: any) => ({ label: o.label, pct: 0 })),
+            votes: (p.options || []).map((o: any) => o.votes || 0),
+            total: (p.options || []).reduce((s: number, o: any) => s + (o.votes || 0), 0),
+          })));
+        }
+      });
   }, []);
 
   const events = dbEvents ?? EVENTS;
   const jobs = dbJobs ?? JOBS;
   const scholarships = dbScholarships ?? SCHOLARSHIPS;
   const polls = dbPolls ?? POLLS;
+
+  async function handleVote(pollId: string | number, optionIndex: number) {
+    const key = `voted_poll_${pollId}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, String(optionIndex));
+    await supabase.rpc('increment_poll_vote', { p_poll_id: pollId, p_option_index: optionIndex });
+    setDbPolls(prev => prev && prev.map((p: any) => p.id === pollId
+      ? { ...p, votes: p.votes.map((v: number, i: number) => i === optionIndex ? v + 1 : v), total: p.total + 1 }
+      : p));
+  }
 
   const TABS: { id: Tab; label: string; Icon: typeof Users }[] = [
     { id: 'events',       label: 'Events',       Icon: Calendar },
@@ -415,7 +453,15 @@ export default function CommunityPage({ onNavigate }: CommunityPageProps) {
           {tab === 'polls' && (
             <motion.div key="polls" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {polls.map(poll => <Poll key={poll.id} poll={poll} />)}
+                {polls.map(poll => (
+                  <Poll key={poll.id} poll={poll}
+                    onVote={dbPolls ? (i) => handleVote(poll.id, i) : undefined}
+                    initialVotedIndex={dbPolls ? (() => {
+                      const v = localStorage.getItem(`voted_poll_${poll.id}`);
+                      return v !== null ? Number(v) : null;
+                    })() : null}
+                  />
+                ))}
               </div>
               <div className="mt-8 p-6 bg-brand-surface border border-news-border rounded-2xl text-center">
                 <BarChart2 size={20} className="text-ashanti-gold mx-auto mb-3" />
