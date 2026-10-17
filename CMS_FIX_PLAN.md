@@ -108,11 +108,11 @@ to see to act on, not just admins.
 ## Task 5 — Draft / scheduled article status
 
 - `PublishModal.tsx`: added "Save as Draft" alongside the publish
-  button. Added an optional "Schedule for later" datetime field —
-  **honest caveat: this only stores the target time and marks the
-  article a draft; nothing in this app auto-publishes it at that time**
-  (there's no cron job / scheduled function here to do that), so I
-  labeled it accordingly rather than implying unattended auto-publish.
+  button. Added an optional "Schedule for later" datetime field — this
+  originally only stored the target time with no automatic follow-up;
+  a `pg_cron` job added later (see the "Scheduled auto-publish" addendum
+  further down) now actually flips it to published when the time
+  passes, so the UI copy was updated to match once that landed.
   Also made the slug field editable (previously silently
   auto-generated with no way to override it) with a real uniqueness
   check against `articles.slug` before saving — previously a title
@@ -246,12 +246,9 @@ worth recording:
    Breaking News, Podcasts upload, the new draft/schedule flow, and the
    per-role tab visibility have only been verified at the
    database/API/typecheck level, not by actually using the UI.
-4. If you want scheduled articles to actually auto-publish at their
-   target time (rather than just being clearly marked "Scheduled" for
-   you to publish yourself), that needs a scheduled function (e.g. a
-   Supabase Edge Function on a cron schedule, or a Vercel Cron Job) —
-   out of scope here since it's new infrastructure, not a fix to
-   something existing.
+4. ~~Scheduled articles auto-publishing~~ — **done**, see the
+   "Scheduled auto-publish" addendum below. Run
+   `supabase/scheduled_publish.sql` to enable it.
 5. Decide if the Task 6 role split above matches how you actually want
    journalists vs. admins to work — easy to adjust either direction.
 
@@ -340,3 +337,46 @@ Added after the fixes above, same conventions:
   `[file]` block-handler additions in `ArticleView.tsx`. The
   `article-documents` bucket and its policies are harmless if nothing
   references them.
+
+## Addendum — scheduled auto-publish
+
+The "Schedule for later" field (Task 5) originally only stored a
+target time on a draft with no automatic follow-up — an editor had to
+come back and hit Publish themselves. Fixed with `pg_cron`
+(`supabase/scheduled_publish.sql`), a job running every minute entirely
+inside Postgres:
+
+```sql
+UPDATE public.articles
+SET status = 'published', published_at = NOW(), scheduled_at = NULL
+WHERE status = 'draft' AND scheduled_at IS NOT NULL AND scheduled_at <= NOW();
+```
+
+No new serverless function or Vercel Cron Job — consistent with this
+project's existing avoidance of a Node server in production. Also
+fixed a related pre-existing inconsistency while doing this:
+`PublishModal.tsx`'s insert path always stamped `published_at` at
+*creation* time, even for a draft saved days before its scheduled
+go-live — meaning a scheduled article would have shown the wrong
+publish date once it went live. The cron job now sets `published_at =
+NOW()` at the moment it actually publishes, so the date shown to
+readers (and used by the sitemap/RSS feed) reflects when the story
+actually went live, not when the draft was first saved.
+
+- **Manual step required:** run `supabase/scheduled_publish.sql` in
+  the Supabase SQL editor. It enables the `pg_cron` extension (usually
+  just works from the SQL editor on Supabase; if it errors on
+  permissions, enable "pg_cron" first via Database → Extensions in the
+  dashboard, then re-run just the `cron.schedule(...)` portion) and
+  registers the job. The script's last line confirms registration by
+  listing the job back.
+- **Verified:** `tsc --noEmit` / `npm run build` clean. The cron job
+  itself runs inside Supabase's Postgres, which this environment has
+  no way to directly observe running — I can't watch a minute tick by
+  and confirm a real draft flips to published without DB execution
+  access. The SQL was checked for correctness against the exact column
+  names/semantics already in use (`status`, `scheduled_at`,
+  `published_at`) rather than run.
+- **Rollback:** `SELECT cron.unschedule('publish-scheduled-articles');`
+  stops it; nothing else to revert since no application code changed
+  beyond the two UI-copy corrections above.

@@ -43,11 +43,10 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
 
   // Draft / schedule — scheduledAt uses the <input type="datetime-local">
   // format (no timezone suffix); converted to an ISO string on save.
-  // Scheduling only stores the target time and marks the article as a
-  // draft — there's no cron job in this app to flip it to 'published'
-  // automatically at that time, so an editor still has to come back and
-  // hit Publish. The field exists so the intended date is visible and
-  // not lost, not to promise unattended auto-publish.
+  // This save only marks the article a draft with a target time; the
+  // actual flip to 'published' happens separately via a pg_cron job
+  // (see supabase/scheduled_publish.sql) that runs every minute inside
+  // Postgres, not from any code path in this file.
   const toLocalInputValue = (iso?: string | null) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -668,7 +667,7 @@ export default function PublishModal({ user, defaultCategory, editArticle, onClo
           {/* Schedule (optional) */}
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest font-black text-slate-400">
-              Schedule for later (optional) — still requires you to come back and hit Publish; nothing auto-publishes
+              Schedule for later (optional) — publishes automatically once the time passes, usually within a minute
             </label>
             <input
               type="datetime-local"
