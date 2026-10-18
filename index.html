@@ -6,6 +6,32 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+
+    // Consent Mode v2 — must be set before the first 'config' call. Reads
+    // any prior choice synchronously from localStorage so a returning
+    // visitor's consent is honored immediately (no denied-then-granted
+    // flash); a first-time visitor defaults to fully denied until
+    // CookieConsentBanner.tsx captures a real choice and calls
+    // gtag('consent','update',...). This is what lets AdSense fall back
+    // to non-personalized ads for EEA/UK visitors who haven't consented,
+    // without needing a separate TCF-certified CMP for that case —
+    // personalized ads to EEA/UK still require one; see CMS_FIX_PLAN.md-
+    // style notes in CookieConsentBanner.tsx for the parts that need the
+    // site owner's own AdSense dashboard access.
+    (function () {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem('bw_cookie_consent')); } catch (e) {}
+      var ads = stored && stored.ads ? 'granted' : 'denied';
+      var analytics = stored && stored.analytics ? 'granted' : 'denied';
+      gtag('consent', 'default', {
+        ad_storage: ads,
+        ad_user_data: ads,
+        ad_personalization: ads,
+        analytics_storage: analytics,
+        wait_for_update: 500,
+      });
+    })();
+
     gtag('js', new Date());
 
     gtag('config', 'G-F18CW8305E');
@@ -83,7 +109,8 @@
       "https://www.facebook.com/share/1B519RZZYj/",
       "https://www.instagram.com/bosomtwi_web",
       "https://youtube.com/@bosomtwi_web_news",
-      "https://www.tiktok.com/@bosomtwi_web_news"
+      "https://www.tiktok.com/@bosomtwi_web_news",
+      "https://whatsapp.com/channel/0029VaDxjSPKgsNn2w0XDI1k"
     ],
     "contactPoint": {
       "@type": "ContactPoint",

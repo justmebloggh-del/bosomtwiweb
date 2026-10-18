@@ -1,6 +1,6 @@
 import { Article, User } from '../types';
 import {
-  Share2, Bookmark, MessageSquare, ArrowLeft, Calendar,
+  Bookmark, MessageSquare, ArrowLeft, Calendar,
   ArrowUpRight, Link, Check, PenLine, Loader2, Volume2, VolumeX,
   Clock, Eye, FileText, FileSpreadsheet, Download
 } from 'lucide-react';
@@ -19,6 +19,15 @@ function XIcon({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  );
+}
+
+function WhatsAppIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-1.746-.873-2.888-1.557-4.036-3.53-.306-.526.306-.489.874-1.627.096-.198.048-.371-.05-.52-.1-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.009-.372-.011-.57-.011-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.073 3.163 5.025 4.312 2.95 1.148 2.95.766 3.942.64.99-.124 2.183-.86 2.439-1.86.255-.998.255-1.86.18-2.01-.075-.149-.307-.223-.605-.372z"/>
+      <path d="M12.04 2.004c-5.46 0-9.91 4.447-9.91 9.91 0 1.746.46 3.455 1.333 4.95L2.057 22l5.254-1.378a9.86 9.86 0 0 0 4.728 1.202h.004c5.46 0 9.908-4.447 9.908-9.91 0-2.647-1.03-5.136-2.9-7.007a9.822 9.822 0 0 0-6.999-2.903zm5.45 15.371a8.168 8.168 0 0 1-5.455 2.08h-.003a8.14 8.14 0 0 1-4.147-1.138l-.297-.177-2.93.768.782-2.857-.194-.294a8.146 8.146 0 0 1-1.247-4.343c.002-4.506 3.672-8.175 8.185-8.175 2.187 0 4.244.852 5.79 2.398a8.133 8.133 0 0 1 2.396 5.788c0 4.507-3.671 8.176-8.18 8.176-.005 0-.005 0 0 0z"/>
     </svg>
   );
 }
@@ -455,8 +464,8 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
               <XIcon size={15} />
             </a>
             <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full border border-news-border flex items-center justify-center text-news-muted hover:bg-green-500 hover:border-green-500 hover:text-white transition-all">
-              <Share2 size={15} />
+              className="w-10 h-10 rounded-full border border-news-border flex items-center justify-center text-news-muted hover:bg-[#25D366] hover:border-[#25D366] hover:text-white transition-all">
+              <WhatsAppIcon size={15} />
             </a>
             <button onClick={copyToClipboard}
               className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${copied ? 'bg-ashanti-gold border-ashanti-gold text-black' : 'border-news-border text-news-muted hover:border-ashanti-gold hover:text-ashanti-gold'}`}>
@@ -510,7 +519,7 @@ export default function ArticleView({ article, onBack, relatedArticles, onArticl
                     <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer"
                       className="p-2.5 text-news-muted hover:text-ashanti-gold transition-all"><XIcon size={15} /></a>
                     <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer"
-                      className="p-2.5 text-news-muted hover:text-ashanti-gold transition-all"><Share2 size={15} /></a>
+                      className="p-2.5 text-news-muted hover:text-[#25D366] transition-all"><WhatsAppIcon size={15} /></a>
                     <button onClick={copyToClipboard}
                       className="p-2.5 text-news-muted hover:text-ashanti-gold transition-all">
                       <AnimatePresence mode="wait">

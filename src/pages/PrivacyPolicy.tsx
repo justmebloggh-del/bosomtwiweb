@@ -96,7 +96,11 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
               <li><strong>Analytics</strong> — help us understand how visitors use our site (e.g. Google Analytics). Data is aggregated and anonymised.</li>
               <li><strong>Advertising</strong> — used by our ad partners to serve relevant advertisements. You may opt out via your browser settings or industry opt-out tools.</li>
             </ul>
-            <p className="mt-3">You can control cookies through your browser settings. Disabling cookies may limit some features of the site.</p>
+            <p className="mt-3">
+              When you first visit, you'll be asked to choose which of these categories you consent to. You
+              can change your choice at any time via "Cookie Settings" in the footer, or by controlling
+              cookies through your browser settings. Disabling cookies may limit some features of the site.
+            </p>
           </section>
 
           <section>

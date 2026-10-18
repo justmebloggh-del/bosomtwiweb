@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MapPin, Phone, Mail, ArrowUpRight, Radio } from 'lucide-react';
+import { openCookieSettings } from '../lib/consent';
 
 function FacebookIcon({ size = 16 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>;
@@ -12,6 +13,14 @@ function YoutubeIcon({ size = 16 }: { size?: number }) {
 }
 function TikTokIcon({ size = 16 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"/></svg>;
+}
+function WhatsAppIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-1.746-.873-2.888-1.557-4.036-3.53-.306-.526.306-.489.874-1.627.096-.198.048-.371-.05-.52-.1-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.009-.372-.011-.57-.011-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.073 3.163 5.025 4.312 2.95 1.148 2.95.766 3.942.64.99-.124 2.183-.86 2.439-1.86.255-.998.255-1.86.18-2.01-.075-.149-.307-.223-.605-.372z"/>
+      <path d="M12.04 2.004c-5.46 0-9.91 4.447-9.91 9.91 0 1.746.46 3.455 1.333 4.95L2.057 22l5.254-1.378a9.86 9.86 0 0 0 4.728 1.202h.004c5.46 0 9.908-4.447 9.908-9.91 0-2.647-1.03-5.136-2.9-7.007a9.822 9.822 0 0 0-6.999-2.903zm5.45 15.371a8.168 8.168 0 0 1-5.455 2.08h-.003a8.14 8.14 0 0 1-4.147-1.138l-.297-.177-2.93.768.782-2.857-.194-.294a8.146 8.146 0 0 1-1.247-4.343c.002-4.506 3.672-8.175 8.185-8.175 2.187 0 4.244.852 5.79 2.398a8.133 8.133 0 0 1 2.396 5.788c0 4.507-3.671 8.176-8.18 8.176-.005 0-.005 0 0 0z"/>
+    </svg>
+  );
 }
 
 interface FooterProps {
@@ -35,7 +44,10 @@ const QUICK_LINKS = [
   { label: 'Advertise',         page: 'advertise' },
 ];
 
+const WHATSAPP_CHANNEL_URL = 'https://whatsapp.com/channel/0029VaDxjSPKgsNn2w0XDI1k';
+
 const SOCIAL = [
+  { Icon: WhatsAppIcon,  href: WHATSAPP_CHANNEL_URL, label: 'WhatsApp Channel' },
   { Icon: FacebookIcon,  href: 'https://www.facebook.com/share/1B519RZZYj/?mibextid=wwXIfr', label: 'Facebook' },
   { Icon: InstagramIcon, href: 'https://www.instagram.com/bosomtwi_web?igsh=MXZoNXY5MWRmMzV3bQ%3D%3D', label: 'Instagram' },
   { Icon: YoutubeIcon,   href: 'https://youtube.com/@bosomtwi_web_news', label: 'YouTube' },
@@ -114,13 +126,21 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
               <div google-add-preferred-source-btn="" data-theme="dark"></div>
             </div>
 
-            {/* Live TV pill */}
-            <button onClick={() => onNavigate?.('live')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-              <Radio size={12} />
-              Watch Live TV
-              <ArrowUpRight size={11} />
-            </button>
+            {/* Live TV + WhatsApp Channel pills */}
+            <div className="flex flex-wrap gap-2.5">
+              <button onClick={() => onNavigate?.('live')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                <Radio size={12} />
+                Watch Live TV
+                <ArrowUpRight size={11} />
+              </button>
+              <a href={WHATSAPP_CHANNEL_URL} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#1ebe59] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                <WhatsAppIcon size={12} />
+                Follow on WhatsApp
+                <ArrowUpRight size={11} />
+              </a>
+            </div>
           </div>
 
           {/* Col 2: Coverage */}
@@ -167,6 +187,12 @@ export default function Footer({ onNavigate, onCategoryClick }: FooterProps) {
                   </button>
                 </li>
               ))}
+              <li>
+                <button onClick={openCookieSettings}
+                  className="text-sm text-white/40 hover:text-ashanti-gold transition-colors font-medium">
+                  Cookie Settings
+                </button>
+              </li>
             </ul>
           </div>
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PublishModal from './components/PublishModal';
+import CookieConsentBanner from './components/CookieConsentBanner';
 import { Article, User } from './types';
 import { supabase, dbToArticle } from './lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -557,6 +558,7 @@ export default function App() {
 
       <Analytics />
       <SpeedInsights />
+      <CookieConsentBanner />
     </div>
   );
 }
